@@ -1,0 +1,61 @@
+.mapContainer {
+    position: relative;
+    width: 100%;
+    height: 45vh;
+    margin: 0 auto;
+}
+
+.leafletContainer {
+    width: 100%;
+    height: 100%;
+}
+
+.buttonLocationSave {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 14px;
+    background: var(--secondary);
+    color: var(--text);
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 14px;
+}
+@media screen and (min-width: 768px) {
+    .mapContainer {
+        width: 95%;
+        height: 50vh;
+    }
+
+    .buttonLocationSave {
+        font-size: 15px;
+        padding: 10px 16px;
+    }
+}
+
+@media screen and (min-width: 1024px) {
+    .mapContainer {
+        width: 90%;
+        max-width: 800px;
+        height: 60vh; 
+    }
+
+    .buttonLocationSave {
+        font-size: 16px;
+        padding: 12px 20px;
+    }
+}
+
+
+@media screen and (min-width: 1300px) {
+    .mapContainer {
+        width: 90%;
+        max-width: 1000px;
+        height: 60vh; 
+    }
+
+    .buttonLocationSave {
+        font-size: 16px;
+        padding: 12px 20px;
+    }
+}

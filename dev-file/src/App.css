@@ -22,8 +22,8 @@
 
 .chatbot {
   position: fixed;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease-in-out;
+  left: -360px; /*Leaflet map messes up using transform*/
+  transition: left 0.3s ease-in-out;
   top: 0;
   width: 360px;
   height: 100vh;
@@ -35,7 +35,7 @@
 }
 
 .chatbot.open {
-  transform: translateX(0);
+  left: 0;
 }
 
 .buttonClose {
@@ -79,3 +79,42 @@
   justify-content: center;
   align-items: center;
 }
+
+.locationScreen {
+  position: absolute;
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.locationScreen.visible {
+  opacity: 1;
+}
+
+.locationScreen.exiting {
+  opacity: 0;
+}
+
+.locationDisplay {
+  width: 100%;
+  position: absolute;
+  text-align: center;
+  margin: 0 auto;
+}
+
+.locationDisplay button {
+  margin-top: 10px;
+  padding: 10px 15px;
+  background: red;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+
