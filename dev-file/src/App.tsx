@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";[]
 import "./App.css";
 import LocationPicker from "./LocationPicker";
+import NightSky from "./NightSky";
 
 interface Coordinates {
   lat: number;
@@ -105,7 +106,9 @@ function App() {
 
             {isOpen && <div className="overlay" onClick={() => setIsOpen(false)}></div>}
 
-            <div className="mode">Modes</div>
+            <div id="nightSky">
+              <NightSky></NightSky>
+            </div>
           </motion.main>
         )}
       </AnimatePresence>
