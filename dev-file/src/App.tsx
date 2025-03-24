@@ -104,8 +104,6 @@ function App() {
               <div className="chatBody">Chatbot Messages & Input</div>
             </div>
 
-            {isOpen && <div className="overlay" onClick={() => setIsOpen(false)}></div>}
-
             <div id="nightSky">
               <NightSky></NightSky>
             </div>
