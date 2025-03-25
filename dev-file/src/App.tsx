@@ -85,14 +85,14 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="locationDisplay">
+            <div className="locationDisplay overlay">
               <h2>
                 Saved Location: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
               </h2>
               <button onClick={() => setLocation(null)}>Change Location</button>
             </div>
 
-            <button className="chatToggle" onClick={() => setIsOpen(true)}>
+            <button className="chatToggle overlay" onClick={() => setIsOpen(true)}>
               ☰
             </button>
 

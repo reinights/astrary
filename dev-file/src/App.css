@@ -6,6 +6,15 @@
   overflow: hidden;
 }
 
+.overlay {
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.overlay:hover {
+  opacity: 1;
+}
+
 .chatToggle {
   position: fixed;
   bottom: 20px;
