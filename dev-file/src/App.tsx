@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";[]
+import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 import LocationPicker from "./LocationPicker";
 import NightSky from "./NightSky";
+import { supabase } from "./api/supabase";
 
 interface Coordinates {
   lat: number;
@@ -13,13 +14,31 @@ function App() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [cityName, setCityName] = useState<string | null>(null);
+  const [countryName, setCountryName] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedLocation = localStorage.getItem("userLocation");
-    if (storedLocation) {
-      setLocation(JSON.parse(storedLocation) as Coordinates);
-    }
-  }, []);
+    const fetchCityInfo = async () => {
+      if (location) {
+        //get nearest city is a custom function in supabase that returns the city details based on lat and lons (not 100% accurate, mostly an estimation).
+        const { data, error } = await supabase.rpc("get_nearest_city", {
+          lat_input: location.lat,
+          lng_input: location.lng,
+        });
+  
+        if (error) {
+          console.error("Error fetching city:", error);
+          setCityName(null);
+          setCountryName(null);
+        } else if (data && data.length > 0) {
+          setCityName(data[0].city);
+          setCountryName(data[0].country);
+        }
+      }
+    };
+  
+    fetchCityInfo();
+  }, [location]);
 
   const getLocation = () => {
     if (navigator.geolocation) {
@@ -86,9 +105,10 @@ function App() {
             transition={{ duration: 0.5 }}
           >
             <div className="locationDisplay overlay">
-              <h2>
-                Saved Location: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-              </h2>
+            <h2>
+              {cityName}, {countryName}
+            </h2>
+
               <button onClick={() => setLocation(null)}>Change Location</button>
             </div>
 
