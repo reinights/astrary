@@ -18,6 +18,8 @@ function App() {
   const [cityName, setCityName] = useState<string | null>(null);
   const [countryName, setCountryName] = useState<string | null>(null);
   const [starData, setStarData] = useState<any[]>([]);
+  const [skyTime, setSkyTime] = useState<Date>(new Date());
+
   useEffect(() => {
     const fetchCityInfo = async () => {
       if (location) {
@@ -168,6 +170,31 @@ function App() {
 
             <div id="nightSky">
               <NightSky stars={starData}/>            
+            </div>
+
+            <div className="overlay timeSlider">
+              <input
+                type="range"
+                min={0}
+                max={23}
+                step={1}
+                value={skyTime.getUTCHours()}
+                onChange={(e) => {
+                  const hour = parseInt(e.target.value);
+                  const today = new Date();
+                  const newTime = new Date(Date.UTC(
+                    today.getUTCFullYear(),
+                    today.getUTCMonth(),
+                    today.getUTCDate(),
+                    hour,
+                    0,
+                    0,
+                    0
+                  ));
+                  setSkyTime(newTime);
+                }}
+              />
+              <p>{skyTime.toUTCString()}</p>
             </div>
           </motion.main>
         )}
