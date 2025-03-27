@@ -4,6 +4,7 @@ import "./App.css";
 import LocationPicker from "./LocationPicker";
 import NightSky from "./NightSky";
 import { supabase } from "./api/supabase";
+import Papa from "papaparse";
 
 interface Coordinates {
   lat: number;
@@ -16,7 +17,7 @@ function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [cityName, setCityName] = useState<string | null>(null);
   const [countryName, setCountryName] = useState<string | null>(null);
-
+  const [starData, setStarData] = useState<any[]>([]);
   useEffect(() => {
     const fetchCityInfo = async () => {
       if (location) {
@@ -36,9 +37,50 @@ function App() {
         }
       }
     };
+    
+    //trimmed hipporacus is 5.2 mb with 100000 items, should be better than using an public database.
+    const fetchStars = async () => {
+      const res = await fetch("/stars.csv");
+      const csvText = await res.text();
+      const { data } = Papa.parse(csvText, { header: true, dynamicTyping: true });
+    
+      const filtered = data.filter((star: any) => {
+        return (
+          star.mag <= 6.5
+        );
+      });
+    
+      setStarData(filtered);
+    };
+  
+    fetchCityInfo();
+    fetchStars();
+  }, [location]);
+  
+  useEffect(() => {
+    const fetchCityInfo = async () => {
+      if (!location) return;
+  
+      const { data: cityData, error: cityError } = await supabase.rpc("get_nearest_city", {
+        lat_input: location.lat,
+        lng_input: location.lng,
+      });
+  
+      if (cityError) {
+        console.error("Error fetching city:", cityError);
+        setCityName(null);
+        setCountryName(null);
+      } else if (cityData && cityData.length > 0) {
+        setCityName(cityData[0].city);
+        setCountryName(cityData[0].country);
+      }
+  
+
+    };
   
     fetchCityInfo();
   }, [location]);
+  
 
   const getLocation = () => {
     if (navigator.geolocation) {
@@ -125,7 +167,7 @@ function App() {
             </div>
 
             <div id="nightSky">
-              <NightSky></NightSky>
+              <NightSky stars={starData}/>            
             </div>
           </motion.main>
         )}
