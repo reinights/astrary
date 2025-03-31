@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 import LocationPicker from "./LocationPicker";
 import NightSky from "./NightSky";
-import { supabase } from "./api/supabase";
 import Papa from "papaparse";
 
 interface Coordinates {
@@ -22,21 +21,46 @@ function App() {
 
   useEffect(() => {
     const fetchCityInfo = async () => {
-      if (location) {
-        //get nearest city is a custom function in supabase that returns the city details based on lat and lons (not 100% accurate, mostly an estimation).
-        const { data, error } = await supabase.rpc("get_nearest_city", {
-          lat_input: location.lat,
-          lng_input: location.lng,
-        });
-  
-        if (error) {
-          console.error("Error fetching city:", error);
-          setCityName(null);
-          setCountryName(null);
-        } else if (data && data.length > 0) {
-          setCityName(data[0].city);
-          setCountryName(data[0].country);
+      if (!location) return;
+        
+      const response = await fetch("/cities_rows.csv");
+      const csvText = await response.text();
+    
+      const parsed = Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+      });
+    
+      const cities = parsed.data as {
+        city: string;
+        country: string;
+        lat: number;
+        lng: number;
+      }[];
+
+      console.log(cities)
+    
+      let nearest = null;
+
+      //stores the current smallest distance, gets replaced if it finds a smaller one
+      let minDistance = Infinity;
+    
+      for (const city of cities) {
+        //essentially pythagoras, but we don't need to sqrt as we're only doing comparisons.
+        const distance = Math.pow(city.lat - location.lat, 2) + Math.pow(city.lng - location.lng, 2);
+    
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearest = city;
         }
+      }
+    
+      if (nearest) {
+        setCityName(nearest.city);
+        setCountryName(nearest.country);
+      } else {
+        setCityName(null);
+        setCountryName(null);
       }
     };
     
@@ -55,33 +79,12 @@ function App() {
       setStarData(filtered);
     };
   
+    setIsLoading(true)
     fetchCityInfo();
     fetchStars();
+    setIsLoading(false)
   }, [location]);
   
-  useEffect(() => {
-    const fetchCityInfo = async () => {
-      if (!location) return;
-  
-      const { data: cityData, error: cityError } = await supabase.rpc("get_nearest_city", {
-        lat_input: location.lat,
-        lng_input: location.lng,
-      });
-  
-      if (cityError) {
-        console.error("Error fetching city:", cityError);
-        setCityName(null);
-        setCountryName(null);
-      } else if (cityData && cityData.length > 0) {
-        setCityName(cityData[0].city);
-        setCountryName(cityData[0].country);
-      }
-  
-
-    };
-  
-    fetchCityInfo();
-  }, [location]);
   
 
   const getLocation = () => {
@@ -93,11 +96,7 @@ function App() {
             lng: position.coords.longitude,
           };
           localStorage.setItem("userLocation", JSON.stringify(coords));
-          setIsLoading(true); //Mainly for testing, will change with three.js loading.
-          setTimeout(() => {
-            setLocation(coords);
-            setIsLoading(false);
-          }, 500);
+          setLocation(coords);
         },
         () => {
           alert("Could not get location. Please use the map.");
@@ -110,11 +109,7 @@ function App() {
 
   const handleLocationSelect = (coords: Coordinates) => {
     localStorage.setItem("userLocation", JSON.stringify(coords));
-    setIsLoading(true); //Mainly for testing, will change with three.js loading.
-    setTimeout(() => {
-      setLocation(coords);
-      setIsLoading(false);
-    }, 500);
+    setLocation(coords);
   };
 
   return (
