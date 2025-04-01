@@ -10,6 +10,8 @@ interface Coordinates {
   lng: number;
 }
 
+const fillerText = "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque assumenda, repellat quis itaque delectus nemo possimus, repellendus iure explicabo modi neque nostrum commodi placeat nisi, cupiditate distinctio aperiam. Quos repellat molestiae tempore? Saepe ea esse sit praesentium! At, quis hic!"
+
 function App() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [location, setLocation] = useState<Coordinates | null>(null);
@@ -18,6 +20,8 @@ function App() {
   const [countryName, setCountryName] = useState<string | null>(null);
   const [starData, setStarData] = useState<any[]>([]);
   const [skyTime, setSkyTime] = useState<Date>(new Date());
+  const [messages, setMessages] = useState<{ sender: "user" | "bot"; text: string }[]>([]);
+  const [chatMessage, setChatMessage] = useState<string>("");
 
   useEffect(() => {
     const fetchCityInfo = async () => {
@@ -112,6 +116,26 @@ function App() {
     setLocation(coords);
   };
 
+  const handleSendMessage = () => {
+    const userMsg = chatMessage.trim();
+  
+    // stores the user message
+    setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
+    setChatMessage("");
+  
+    // Simulate bot response with lorem text
+    setTimeout(() => {
+      const fillerWords = fillerText.split(" ");
+
+      //randomises the length of the bot for simulation purposes
+      const randomLength = Math.floor(Math.random() * 20) + 5;
+      const botMsg = fillerWords.slice(0, randomLength).join(" ");
+  
+      setMessages((prev) => [...prev, { sender: "bot", text: botMsg }]);
+    }, 500); // lil delay for realism
+  };
+  
+
   return (
     <>
       <AnimatePresence mode="wait">
@@ -152,7 +176,7 @@ function App() {
             </div>
 
             <button className="chatToggle overlay" onClick={() => setIsOpen(true)}>
-              ☰
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 -960 960 960" fill="var(--text)"><path d="M240-400h320v-80H240zm0-120h480v-80H240zm0-120h480v-80H240zM80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240zm126-240h594v-480H160v525zm-46 0v-480z"/></svg>
             </button>
 
             <div className={`chatbot ${isOpen ? "open" : ""}`}>
@@ -160,7 +184,28 @@ function App() {
                 Chatbot Header
                 <button className="buttonClose" onClick={() => setIsOpen(false)}>✖</button>
               </div>
-              <div className="chatBody">Chatbot Messages & Input</div>
+              <div className="chatBody">
+                <div className="chatContent">
+                  {messages.map((msg, index) => (
+                    <div key={index} className={`message ${msg.sender}`}>
+                      {msg.text}
+                    </div>
+                  ))}
+                </div>
+                <div className="chatInput">
+                  <input 
+                    type="text" 
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && chatMessage.trim()) {
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  </div>
+
+              </div>
             </div>
 
             <div id="nightSky">

@@ -74,10 +74,46 @@
 }
 
 .chatBody {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   flex-grow: 1;
-  padding: 15px;
   overflow-y: auto;
   background: var(--primary);
+}
+
+.chatContent {
+  flex: 1;
+  padding: 10px;
+}
+
+.chatInput {
+  padding: 10px;
+}
+
+.chatInput input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--text);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  background-color: var(--primary);
+  box-sizing: border-box;
+}
+
+.message {
+  margin-bottom: 10px;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+
+  /* Allows the text content to wrap, instead of overflowing */
+  overflow-wrap: break-word; 
+}
+
+.bot {
+  padding: 1em;
+  background-color: rgba(29, 29, 29, 0.486);
 }
 
 #nightSky {
