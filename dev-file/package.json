@@ -13,6 +13,7 @@
     "@react-three/drei": "^10.0.4",
     "@react-three/fiber": "^9.1.0",
     "@supabase/supabase-js": "^2.49.3",
+    "astronomia": "^4.1.1",
     "framer-motion": "^12.5.0",
     "leaflet": "^1.9.4",
     "papaparse": "^5.5.2",

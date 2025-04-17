@@ -209,33 +209,37 @@ function App() {
             </div>
 
             <div id="nightSky">
-              <NightSky stars={starData}/>            
+            <NightSky 
+              stars={starData} 
+              time={skyTime} 
+              lat={location.lat} 
+              lng={location.lng} 
+            />
             </div>
 
             <div className="overlay timeSlider">
               <input
                 type="range"
                 min={0}
-                max={23}
-                step={1}
-                value={skyTime.getUTCHours()}
+                max={1439} 
+                step={1}   
+                value={skyTime.getHours() * 60 + skyTime.getMinutes()}
                 onChange={(e) => {
-                  const hour = parseInt(e.target.value);
-                  const today = new Date();
-                  const newTime = new Date(Date.UTC(
-                    today.getUTCFullYear(),
-                    today.getUTCMonth(),
-                    today.getUTCDate(),
-                    hour,
-                    0,
-                    0,
-                    0
-                  ));
-                  setSkyTime(newTime);
+                  const totalMinutes = parseInt(e.target.value, 10);
+                  const hour = Math.floor(totalMinutes / 60);
+                  const minute = totalMinutes % 60;
+
+                  const base = new Date(skyTime); 
+                  base.setHours(hour, minute, 0, 0);
+
+                  setSkyTime(new Date(base));
                 }}
               />
-              <p>{skyTime.toUTCString()}</p>
+              <p>
+                {skyTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {skyTime.toISOString()}
+              </p>
             </div>
+
           </motion.main>
         )}
       </AnimatePresence>
