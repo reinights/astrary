@@ -10,9 +10,12 @@ interface Coordinates {
   lng: number;
 }
 
+type Screen = "location" | "nightSky" | "conditions";
+
 const fillerText = "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque assumenda, repellat quis itaque delectus nemo possimus, repellendus iure explicabo modi neque nostrum commodi placeat nisi, cupiditate distinctio aperiam. Quos repellat molestiae tempore? Saepe ea esse sit praesentium! At, quis hic!"
 
 function App() {
+  const [activeScreen, setActiveScreen] = useState<Screen>("location");
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -22,8 +25,14 @@ function App() {
   const [skyTime, setSkyTime] = useState<Date>(new Date());
   const [messages, setMessages] = useState<{ sender: "user" | "bot"; text: string }[]>([]);
   const [chatMessage, setChatMessage] = useState<string>("");
+  const [weatherData, setWeatherData] = useState<any | null>(null);
 
   useEffect(() => {
+    if (!location){
+      setActiveScreen("location")
+      return;
+    };
+
     const fetchCityInfo = async () => {
       if (!location) return;
         
@@ -82,11 +91,23 @@ function App() {
     
       setStarData(filtered);
     };
+
+    const fetchWeather = async () => {
+      if (!location) return;
+  
+      const res = await fetch(`https://www.7timer.info/bin/api.pl?lon=${location.lng}&lat=${location.lat}&product=astro&output=json`);
+      const data = await res.json();
+      setWeatherData(data);
+      console.log(data)
+    };
+  
   
     setIsLoading(true)
     fetchCityInfo();
     fetchStars();
-    setIsLoading(false)
+    fetchWeather();
+    setIsLoading(false);
+    setActiveScreen("nightSky")
   }, [location]);
   
   
@@ -139,7 +160,7 @@ function App() {
   return (
     <>
       <AnimatePresence mode="wait">
-        {!location && (
+        {activeScreen === "location" && (
           <motion.div
             key="locationScreen"
             className="locationScreen"
@@ -158,7 +179,7 @@ function App() {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {location && (
+        {activeScreen === "nightSky" && (
           <motion.main
             key="mainScreen"
             className="screen"
@@ -172,7 +193,7 @@ function App() {
               {cityName}, {countryName}
             </h2>
 
-              <button onClick={() => setLocation(null)}>Change Location</button>
+            <button onClick={() => setActiveScreen("location")}>Change Location</button>
             </div>
 
             <button className="chatToggle overlay" onClick={() => setIsOpen(true)}>
@@ -204,17 +225,26 @@ function App() {
                     }}
                   />
                   </div>
-
               </div>
             </div>
-
+            <button style={{right: '90px'}} className="chatToggle overlay" onClick={() => setActiveScreen("conditions")}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-clouds" viewBox="0 0 16 16">
+                <path d="M16 7.5a2.5 2.5 0 0 1-1.456 2.272 3.5 3.5 0 0 0-.65-.824 1.5 1.5 0 0 0-.789-2.896.5.5 0 0 1-.627-.421 3 3 0 0 0-5.22-1.625 5.6 5.6 0 0 0-1.276.088 4.002 4.002 0 0 1 7.392.91A2.5 2.5 0 0 1 16 7.5"/>
+                <path d="M7 5a4.5 4.5 0 0 1 4.473 4h.027a2.5 2.5 0 0 1 0 5H3a3 3 0 0 1-.247-5.99A4.5 4.5 0 0 1 7 5m3.5 4.5a3.5 3.5 0 0 0-6.89-.873.5.5 0 0 1-.51.375A2 2 0 1 0 3 13h8.5a1.5 1.5 0 1 0-.376-2.953.5.5 0 0 1-.624-.492z"/>
+              </svg>
+            </button>
             <div id="nightSky">
-            <NightSky 
-              stars={starData} 
-              time={skyTime} 
-              lat={location.lat} 
-              lng={location.lng} 
-            />
+            {location && (
+              <div id="nightSky">
+                <NightSky 
+                  stars={starData} 
+                  time={skyTime} 
+                  lat={location.lat} 
+                  lng={location.lng} 
+                />
+              </div>
+            )}
+
             </div>
 
             <div className="overlay timeSlider">
@@ -243,6 +273,90 @@ function App() {
           </motion.main>
         )}
       </AnimatePresence>
+      <AnimatePresence mode="wait">
+        {activeScreen === "conditions" && (
+          <motion.div
+            key="weatherScreen"
+            className="screen"
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="conditionsLayout">
+              <div className="weatherPanel">
+                {weatherData ? (
+                  weatherData.dataseries.slice(0, 5).map((entry: any, index: number) => (
+                    <div key={index} className="">
+                      <strong>{entry.timepoint}h from now</strong><br />
+                      Cloud Cover: {entry.cloudcover}/9<br />
+                      Seeing: {entry.seeing}/3<br />
+                      Transparency: {entry.transparency}/3<br />
+                      Temp: {entry.temp2m}°C
+                    </div>
+                  ))
+                ) : (
+                  <div className="message bot">Loading forecast...</div>
+                )}
+              </div>
+
+              <div className="eventsPanel">
+                <h3>Upcoming Events</h3>
+                {/* Currently only shows in London. I believe atm it's unnecassry work to do further. */}
+                <iframe
+                  style={{
+                    border: 'none',
+                    width: '100%',
+                    height: '759px',
+                    overflow: 'hidden',
+                  }}
+                  src="https://in-the-sky.org/widgets/newscal.php?skin=1&locale=1&town=2643743"
+                />              
+              </div>
+            </div>
+
+            <button className="chatToggle overlay" onClick={() => setIsOpen(true)}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 -960 960 960" fill="var(--text)"><path d="M240-400h320v-80H240zm0-120h480v-80H240zm0-120h480v-80H240zM80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240zm126-240h594v-480H160v525zm-46 0v-480z"/></svg>
+            </button>
+
+            <div className={`chatbot ${isOpen ? "open" : ""}`}>
+              <div className="chatHeader">
+                Chatbot Header
+                <button className="buttonClose" onClick={() => setIsOpen(false)}>✖</button>
+              </div>
+              <div className="chatBody">
+                <div className="chatContent">
+                  {messages.map((msg, index) => (
+                    <div key={index} className={`message ${msg.sender}`}>
+                      {msg.text}
+                    </div>
+                  ))}
+                </div>
+                <div className="chatInput">
+                  <input 
+                    type="text" 
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && chatMessage.trim()) {
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  </div>
+              </div>
+            </div>
+            <button style={{right: '90px'}} className="chatToggle overlay" onClick={() => setActiveScreen("nightSky")}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-clouds" viewBox="0 0 16 16">
+                <path d="M16 7.5a2.5 2.5 0 0 1-1.456 2.272 3.5 3.5 0 0 0-.65-.824 1.5 1.5 0 0 0-.789-2.896.5.5 0 0 1-.627-.421 3 3 0 0 0-5.22-1.625 5.6 5.6 0 0 0-1.276.088 4.002 4.002 0 0 1 7.392.91A2.5 2.5 0 0 1 16 7.5"/>
+                <path d="M7 5a4.5 4.5 0 0 1 4.473 4h.027a2.5 2.5 0 0 1 0 5H3a3 3 0 0 1-.247-5.99A4.5 4.5 0 0 1 7 5m3.5 4.5a3.5 3.5 0 0 0-6.89-.873.5.5 0 0 1-.51.375A2 2 0 1 0 3 13h8.5a1.5 1.5 0 1 0-.376-2.953.5.5 0 0 1-.624-.492z"/>
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      
     </>
   );
 }
