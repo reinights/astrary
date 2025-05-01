@@ -7,7 +7,7 @@ interface Coordinates {
   lng: number;
 }
 
-const defaultPosition: Coordinates = { lat: 51.505, lng: -0.09 };
+const defaultPosition: Coordinates = { lat: 51.505, lng: -0.09 }; //defaults at london.
 
 function LocationPicker({ onLocationSelect }: { onLocationSelect: (coords: Coordinates) => void }) {
   const [position, setPosition] = useState<Coordinates>(defaultPosition);
