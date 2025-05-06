@@ -1,7 +1,7 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Text } from "@react-three/drei";
 import * as THREE from "three";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 // @ts-ignore
 import { julian } from "astronomia";
 
@@ -161,6 +161,7 @@ export default function NightSky({
     return convertStarsToGeometryData(stars, 100, time, lat, lng);
   }, [stars, time, lat, lng]);
 
+
   return (
     <Canvas
       camera={{ position: [0, 1, 3] }}
@@ -194,7 +195,12 @@ export default function NightSky({
 
       <mesh position={[0, -1.5, 0]} rotation={[Math.PI, 0, 0]}>
         <sphereGeometry args={[10, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
-        <meshStandardMaterial color="darkgreen" side={THREE.DoubleSide} />
+        <meshStandardMaterial
+          color="#222"
+          roughness={1}
+          metalness={0}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
       <OrbitControls

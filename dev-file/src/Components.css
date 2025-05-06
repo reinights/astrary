@@ -1,25 +1,31 @@
 .mapContainer {
     position: relative;
-    width: 100%;
+    width: 90%;
     height: 45vh;
+    max-width: 600px;
     margin: 0 auto;
 }
 
 .leafletContainer {
     width: 100%;
     height: 100%;
+    border-radius: 20px;
+    border-color: var(--primary);
+    border-width: 5px;
+    border-style: solid;
 }
 
 .buttonLocationSave {
     display: block;
     margin: 10px auto;
-    padding: 8px 14px;
-    background: var(--secondary);
-    color: var(--text);
+    background-color: #1f2937;
+    color: #ffffff;
+    font-weight: 500;
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
     border: none;
+    border-radius: 4px;
     cursor: pointer;
-    border-radius: 6px;
-    font-size: 14px;
 }
 @media screen and (min-width: 768px) {
     .mapContainer {
@@ -36,7 +42,7 @@
 @media screen and (min-width: 1024px) {
     .mapContainer {
         width: 90%;
-        max-width: 800px;
+        max-width: 600px;
         height: 60vh; 
     }
 
@@ -50,7 +56,7 @@
 @media screen and (min-width: 1300px) {
     .mapContainer {
         width: 90%;
-        max-width: 1000px;
+        max-width: 600px;
         height: 60vh; 
     }
 

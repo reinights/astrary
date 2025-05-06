@@ -27,7 +27,7 @@ import {
 } from "recharts";
 
 type Screen = "location" | "nightSky" | "conditions";
-
+import { GoogleGenAI } from "@google/genai";
 const fillerText =
   "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque assumenda, repellat quis itaque delectus nemo possimus, repellendus iure explicabo modi neque nostrum commodi placeat nisi, cupiditate distinctio aperiam. Quos repellat molestiae tempore? Saepe ea esse sit praesentium! At, quis hic!";
 
@@ -316,13 +316,14 @@ function App() {
           className="screen"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0}}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeInOut" }}
         >
           {activeScreen === "location" && (
             <div className="locationScreen">
+              <h2>Choose a Location to Begin</h2>
               <button onClick={getLocation} className="locationBtn">
-                {isLoading ? "Loading..." : "Use My Current Location"}
+                {isLoading ? "Loading..." : "Use Current Location"}
               </button>
               <p>Or click the map to select your location:</p>
               <LocationPicker onLocationSelect={handleLocationSelect} />
@@ -332,12 +333,12 @@ function App() {
           {activeScreen === "nightSky" && (
             <main className="screen">
               <div className="locationDisplay overlay">
-                <h2>
+                <h2 className="headerLocation">
                   {cityName}, {countryName}
                 </h2>
 
-                <button onClick={() => setActiveScreen("location")}>
-                  Change Location
+                <button className="btnLocationChange" onClick={() => setActiveScreen("location")}>
+                  [Change]
                 </button>
               </div>
 
