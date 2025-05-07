@@ -4,8 +4,12 @@
     height: 45vh;
     max-width: 600px;
     margin: 0 auto;
+    display: flex; 
+    flex-direction: column; 
+    align-items: center;
+    justify-content: center;
+    gap: 10px; 
 }
-
 .leafletContainer {
     width: 100%;
     height: 100%;
@@ -16,8 +20,6 @@
 }
 
 .buttonLocationSave {
-    display: block;
-    margin: 10px auto;
     background-color: #1f2937;
     color: #ffffff;
     font-weight: 500;

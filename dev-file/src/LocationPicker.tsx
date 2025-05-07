@@ -30,7 +30,6 @@ function LocationPicker({ onLocationSelect }: { onLocationSelect: (coords: Coord
 
         <MapClickHandler />
       </MapContainer>
-
       <button onClick={() => onLocationSelect(position)} className="buttonLocationSave">
         Save Location
       </button>
