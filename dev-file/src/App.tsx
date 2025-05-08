@@ -254,7 +254,6 @@ function App() {
             />
             <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
             <Tooltip />
-            <Legend />
             <Line type="monotone" dataKey={key} stroke={color} name={name} />
           </LineChart>
         );
@@ -273,7 +272,6 @@ function App() {
             />
             <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
             <Tooltip />
-            <Legend />
             <Area
               type="monotone"
               dataKey={key}
@@ -299,7 +297,6 @@ function App() {
             />
             <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
             <Tooltip />
-            <Legend />
             <Bar dataKey={key} fill={color} name={name} />
           </BarChart>
         );
@@ -337,7 +334,10 @@ function App() {
                   {cityName}, {countryName}
                 </h2>
 
-                <button className="btnLocationChange" onClick={() => setActiveScreen("location")}>
+                <button
+                  className="btnLocationChange"
+                  onClick={() => setActiveScreen("location")}
+                >
                   [Change]
                 </button>
               </div>
@@ -452,6 +452,9 @@ function App() {
             <div key="weatherScreen" className="screen">
               <div className="conditionsLayout">
                 <div className="weatherPanel">
+                  <h2>
+                    Astronomical Conditions for {cityName}, {countryName}
+                  </h2>
                   <div className="moonSunPanel">
                     {sunCalc ? (
                       <div>
@@ -509,20 +512,49 @@ function App() {
                         <div
                           key={key}
                           style={{
-                            width: "100%",
-                            height: 180,
                             marginBottom: "2rem",
+                            padding: "0.5rem 0",
+                            borderBottom: "1px solid rgba(255,255,255,0.1)",
                           }}
                         >
-                          <ResponsiveContainer>
-                            {renderChartByType(
-                              type,
-                              key,
-                              name,
-                              color,
-                              processWeatherData(weatherData, weatherData.init)
-                            )}
-                          </ResponsiveContainer>
+                          <h3
+                            style={{
+                              fontSize: "1.2rem",
+                              marginBottom: "0.5rem",
+                            }}
+                          >
+                            {name}
+                          </h3>
+                          <div style={{ width: "100%", height: 120 }}>
+                            <ResponsiveContainer>
+                              {renderChartByType(
+                                type,
+                                key,
+                                name,
+                                color,
+                                processWeatherData(
+                                  weatherData,
+                                  weatherData.init
+                                )
+                              )}
+                            </ResponsiveContainer>
+                          </div>
+                          <p
+                            style={{
+                              fontSize: "0.85rem",
+                              opacity: 0.7,
+                            }}
+                          >
+                            {/* Possibly where the AI could go */}
+                            {key === "temp" &&
+                              "Temperatures peaked in the afternoon and fell at night."}
+                            {key === "seeing" &&
+                              "Seeing conditions best around midnight."}
+                            {key === "transparency" &&
+                              "Transparency remained stable."}
+                            {key === "cloudcover" &&
+                              "Clouds were light after midnight."}
+                          </p>
                         </div>
                       ))}
                     </div>
