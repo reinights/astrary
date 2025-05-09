@@ -171,26 +171,35 @@ function App() {
     console.log(coords);
     setLocation(coords);
   };
-
-  const handleSendMessage = () => {
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API });
+  const [botLoading, setBotLoading] = useState<boolean>(false);
+  const handleSendMessage = async () => {
     const userMsg = chatMessage.trim();
-
-    // stores the user message
+    if (!userMsg) return;
+  
     setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
     setChatMessage("");
-
-    // Simulate bot response with lorem text
-    setTimeout(() => {
-      const fillerWords = fillerText.split(" ");
-
-      //randomises the length of the bot for simulation purposes
-      const randomLength = Math.floor(Math.random() * 20) + 5;
-      const botMsg = fillerWords.slice(0, randomLength).join(" ");
-
-      setMessages((prev) => [...prev, { sender: "bot", text: botMsg }]);
-    }, 500); // lil delay for realism
+    setBotLoading(true);
+    try {
+      const res = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: userMsg,
+      });
+      console.log(res)
+      console.log(res.text);
+      setMessages((prev) => [...prev, { sender: "bot", text: res.text ?? "..."  }]);
+      
+    } catch (error) {
+      console.error("AI Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: "Something went wrong, please try again later." },
+      ]);
+    }
+    finally {
+      setBotLoading(false);
+    }
   };
-
   function getMoonPhaseName(phase: number): string {
     if (phase < 0.03 || phase > 0.97) return "New Moon";
     if (phase < 0.22) return "Waxing Crescent";
@@ -374,6 +383,15 @@ function App() {
                         {msg.text}
                       </div>
                     ))}
+                    {botLoading && (
+                      <motion.div
+                      className="message bot"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}                    >
+                      <span>Astrary is thinking...</span>
+                    </motion.div>
+                    )}
                   </div>
                   <div className="chatInput">
                     <input
