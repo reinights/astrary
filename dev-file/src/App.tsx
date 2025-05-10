@@ -27,7 +27,6 @@ import {
 } from "recharts";
 
 type Screen = "location" | "nightSky" | "conditions";
-import { GoogleGenAI } from "@google/genai";
 const fillerText =
   "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque assumenda, repellat quis itaque delectus nemo possimus, repellendus iure explicabo modi neque nostrum commodi placeat nisi, cupiditate distinctio aperiam. Quos repellat molestiae tempore? Saepe ea esse sit praesentium! At, quis hic!";
 
@@ -171,34 +170,35 @@ function App() {
     console.log(coords);
     setLocation(coords);
   };
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API });
-  const [botLoading, setBotLoading] = useState<boolean>(false);
-  const handleSendMessage = async () => {
-    const userMsg = chatMessage.trim();
-    if (!userMsg) return;
   
-    setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
-    setChatMessage("");
-    setBotLoading(true);
-    try {
-      const res = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: userMsg,
-      });
-      console.log(res)
-      console.log(res.text);
-      setMessages((prev) => [...prev, { sender: "bot", text: res.text ?? "..."  }]);
+  const [botLoading, setBotLoading] = useState<boolean>(false);
+  //follow this guide: https://blog.lancedb.com/create-llm-apps-using-rag/
+  const handleSendMessage = async () => {
+    // const userMsg = chatMessage.trim();
+    // if (!userMsg) return;
+  
+    // setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
+    // setChatMessage("");
+    // setBotLoading(true);
+    // try {
+    //   const res = await ai.models.generateContent({
+    //     model: "gemini-2.0-flash",
+    //     contents: userMsg,
+    //   });
+    //   console.log(res)
+    //   console.log(res.text);
+    //   setMessages((prev) => [...prev, { sender: "bot", text: res.text ?? "..."  }]);
       
-    } catch (error) {
-      console.error("AI Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        { sender: "bot", text: "Something went wrong, please try again later." },
-      ]);
-    }
-    finally {
-      setBotLoading(false);
-    }
+    // } catch (error) {
+    //   console.error("AI Error:", error);
+    //   setMessages((prev) => [
+    //     ...prev,
+    //     { sender: "bot", text: "Something went wrong, please try again later." },
+    //   ]);
+    // }
+    // finally {
+    //   setBotLoading(false);
+    // }
   };
   function getMoonPhaseName(phase: number): string {
     if (phase < 0.03 || phase > 0.97) return "New Moon";
