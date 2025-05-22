@@ -170,13 +170,12 @@ function App() {
     console.log(coords);
     setLocation(coords);
   };
-  
+
   const [botLoading, setBotLoading] = useState<boolean>(false);
   //follow this guide: https://blog.lancedb.com/create-llm-apps-using-rag/
   const handleSendMessage = async () => {
     // const userMsg = chatMessage.trim();
     // if (!userMsg) return;
-  
     // setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
     // setChatMessage("");
     // setBotLoading(true);
@@ -188,7 +187,6 @@ function App() {
     //   console.log(res)
     //   console.log(res.text);
     //   setMessages((prev) => [...prev, { sender: "bot", text: res.text ?? "..."  }]);
-      
     // } catch (error) {
     //   console.error("AI Error:", error);
     //   setMessages((prev) => [
@@ -314,6 +312,55 @@ function App() {
     }
   };
 
+  const [selectedStarId, setSelectedStarId] = useState<string | null>(null);
+  const [showStarInfo, setShowStarInfo] = useState<boolean>(false);
+  const [starInfo, setStarInfo] = useState<{
+    title: string;
+    description: string;
+    extract: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (selectedStarId) {
+      console.log("You clicked on star:", selectedStarId);
+      searchStar(selectedStarId);
+    }
+  }, [selectedStarId]);
+  const searchStar = async (starId: string) => {
+    try {
+      //wiki fetch.
+      const wikiRes = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
+          starId
+        )}`
+      );
+
+      if (!wikiRes.ok) {
+        throw new Error("Not found");
+      }
+
+      const wikiInfo = await wikiRes.json();
+
+      setStarInfo({
+        title: wikiInfo.title,
+        description: wikiInfo.description,
+        extract: wikiInfo.extract,
+        url: wikiInfo.content_urls.desktop.page,
+      });
+    } catch (err) {
+      console.error("Wiki Summary Error:", err);
+      setStarInfo({
+        title: starId,
+        description: "",
+        extract: `No Wikipedia summary available for ${starId}. Try pressing 'Find out more' to take you to a google search.`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(starId)}`,
+      });
+    } finally {
+      setShowStarInfo(true);
+    }
+  };
+
   return (
     <>
       <AnimatePresence mode="wait">
@@ -338,6 +385,36 @@ function App() {
 
           {activeScreen === "nightSky" && (
             <main className="screen">
+              <AnimatePresence>
+                {showStarInfo && starInfo && (
+                  <motion.div
+                    className="starOverlay"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    <h2>{starInfo.title}</h2>
+                    <p>{starInfo.description}</p>
+                    <p>{starInfo.extract}</p>
+                    <div className="infoActions">
+                      <a
+                        href={starInfo.url}
+                        target="_blank"
+                      >
+                        Find out more
+                      </a>
+                      <button
+                        className="buttonClose"
+                        onClick={() => setShowStarInfo(false)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="locationDisplay overlay">
                 <h2 className="headerLocation">
                   {cityName}, {countryName}
@@ -385,12 +462,13 @@ function App() {
                     ))}
                     {botLoading && (
                       <motion.div
-                      className="message bot"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}                    >
-                      <span>Astrary is thinking...</span>
-                    </motion.div>
+                        className="message bot"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                      >
+                        <span>Astrary is thinking...</span>
+                      </motion.div>
                     )}
                   </div>
                   <div className="chatInput">
@@ -432,6 +510,7 @@ function App() {
                       time={skyTime}
                       lat={location.lat}
                       lng={location.lng}
+                      onStarClick={(id) => setSelectedStarId(id)}
                     />
                   </div>
                 )}

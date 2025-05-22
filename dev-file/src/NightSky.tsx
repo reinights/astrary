@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Text } from "@react-three/drei";
 import * as THREE from "three";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 // @ts-ignore
 import { julian } from "astronomia";
 
@@ -33,11 +33,13 @@ export default function NightSky({
   time,
   lat,
   lng,
+  onStarClick,
 }: {
   stars: any[];
   time: Date;
   lat: number;
   lng: number;
+  onStarClick: (id: string) => void;
 }) {
   console.log("Hello.");
   console.log(stars);
@@ -135,10 +137,8 @@ export default function NightSky({
 
       //within there stars.csv file, there are certain columns that dictates the star's identity. Some of them are empty (unnamed ones) which uses these different values for fallback.
       //currently not used, but this essentially adds a name (key) to a stars position. I intend to use this in order to implement the button interactivity later on.
-      const key =
-        star.proper ||
-        `${star.bayer ?? ""}-${star.con ?? ""}` ||
-        `Hipparcos-${star.hip}`;
+      const key = star.hip ? `HIP ${star.hip}` : null;
+
       if (key) {
         starMap[key] = [x, y, z];
       }
@@ -161,15 +161,91 @@ export default function NightSky({
     return convertStarsToGeometryData(stars, 100, time, lat, lng);
   }, [stars, time, lat, lng]);
 
+  //apparently the camera function won't work unless it's contained within itself.
+  //onStarClick is an external function on App.tsx.
+  //Essentially just takes the nearest star.
+  function StarField({
+    positions,
+    alphas,
+    starMap,
+    onStarClick,
+  }: {
+    positions: Float32Array;
+    alphas: Float32Array;
+    starMap: Record<string, [number, number, number]>;
+    onStarClick: (id: string) => void;
+  }) {
+    const { camera, gl } = useThree();
+    const raycaster = useMemo(() => new THREE.Raycaster(), []);
+    const mouse = useRef(new THREE.Vector2());
 
-  return (
-    <Canvas
-      camera={{ position: [0, 1, 3] }}
-      style={{ width: "100vw", height: "100vh" }}
-    >
-      <ambientLight intensity={0.5} />
-      {/* Three.js recommends using instanced mesh with large quantities but using points seems to be the fastest way */}
-      {/* https://discourse.threejs.org/t/better-performance-instanced-mesh-or-points/20293 */}
+    useEffect(() => {
+      //there's a slight issue when it comes to rotating the canvas,
+      //and that is the event listener for clicking is detected each time, even when dragging to rotate
+
+      let isDragging = false;
+
+      const handleMouseDown = () => {
+        isDragging = false;
+      };
+
+      const handleMouseMove = () => {
+        isDragging = true;
+      };
+
+      //within the starmap data, there's essentially four objects. The xyz, and the added key.
+      //The key data is based on the Hippocarus Identifier.
+      //This function essentially uses raycasting in order to find the closest star the user has clicked.
+      //Raycasting is akin to shooting a line within the space, where the searching algorithm finds the closest match.
+      const handleClick = (event: MouseEvent) => {
+        if (isDragging) return;
+
+        //represents the box that's currently on the screen (in 2d).
+        const rect = gl.domElement.getBoundingClientRect();
+
+        //converts mouse pixel to normalised device coordinates (ndc). WebGL wants this instead of pixels.
+        mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse.current, camera);
+
+        let closestId: string | null = null;
+        let closestDistance = Infinity;
+
+        //this is highly inefficient, but the best way I can do atm.
+        //It's essentially going through the star objects everytime...
+        for (const [id, pos] of Object.entries(starMap)) {
+          const point = new THREE.Vector3(...pos);
+
+          //getting the shortest distance.
+          const distance = raycaster.ray.distanceToPoint(point);
+          
+          //distance tolerance.
+          if (distance < 1.5 && distance < closestDistance) {
+            closestDistance = distance;
+            closestId = id;
+          }
+        }
+
+        if (closestId) {
+          onStarClick(closestId);
+        }
+      };
+
+      //adding the event listeners to the renderer.
+      //Them two move and downs are trackers for dragging. Should not handle the star clicking.
+      gl.domElement.addEventListener("mousedown", handleMouseDown);
+      gl.domElement.addEventListener("mousemove", handleMouseMove);
+      gl.domElement.addEventListener("click", handleClick);
+
+      return () => {
+        gl.domElement.removeEventListener("mousedown", handleMouseDown);
+        gl.domElement.removeEventListener("mousemove", handleMouseMove);
+        gl.domElement.removeEventListener("click", handleClick);
+      };
+    }, [camera, gl, starMap, onStarClick]);
+
+    return (
       <points>
         <bufferGeometry>
           <primitive
@@ -192,6 +268,21 @@ export default function NightSky({
           }}
         />
       </points>
+    );
+  }
+
+  return (
+    <Canvas
+      camera={{ position: [0, 1, 3] }}
+      style={{ width: "100vw", height: "100vh" }}
+    >
+      <ambientLight intensity={0.5} />
+      <StarField
+        positions={positions}
+        alphas={alphas}
+        starMap={starMap}
+        onStarClick={onStarClick}
+      />
 
       <mesh position={[0, -1.5, 0]} rotation={[Math.PI, 0, 0]}>
         <sphereGeometry args={[10, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
