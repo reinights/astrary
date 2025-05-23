@@ -398,10 +398,7 @@ function App() {
                     <p>{starInfo.description}</p>
                     <p>{starInfo.extract}</p>
                     <div className="infoActions">
-                      <a
-                        href={starInfo.url}
-                        target="_blank"
-                      >
+                      <a href={starInfo.url} target="_blank">
                         Find out more
                       </a>
                       <button
@@ -604,7 +601,10 @@ function App() {
                     )}
                   </div>
                   {weatherData && (
-                    <div style={{ width: "100%", marginTop: "1rem" }}>
+                    <div
+                      className="chartDiv"
+                      style={{ width: "100%", marginTop: "1rem" }}
+                    >
                       {weatherVisualisers.map(({ key, name, color, type }) => (
                         <div
                           key={key}
@@ -614,14 +614,7 @@ function App() {
                             borderBottom: "1px solid rgba(255,255,255,0.1)",
                           }}
                         >
-                          <h3
-                            style={{
-                              fontSize: "1.2rem",
-                              marginBottom: "0.5rem",
-                            }}
-                          >
-                            {name}
-                          </h3>
+                          <h3 className="chartHeading">{name}</h3>
                           <div style={{ width: "100%", height: 120 }}>
                             <ResponsiveContainer>
                               {renderChartByType(

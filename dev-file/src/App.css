@@ -252,3 +252,15 @@
     overflow-y: auto;
   }
 }
+
+@media (min-width: 1080px) {
+  .chartDiv{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1em;
+  }
+  .chartHeading{
+    font-size: "1.2rem";
+    margin-bottom: 20px;
+  }
+}
