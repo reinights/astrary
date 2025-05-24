@@ -1,6 +1,6 @@
 //Currently using Prettier for code formatting: https://prettier.io/docs/
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 import LocationPicker from "./LocationPicker";
@@ -27,8 +27,6 @@ import {
 } from "recharts";
 
 type Screen = "location" | "nightSky" | "conditions";
-const fillerText =
-  "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque assumenda, repellat quis itaque delectus nemo possimus, repellendus iure explicabo modi neque nostrum commodi placeat nisi, cupiditate distinctio aperiam. Quos repellat molestiae tempore? Saepe ea esse sit praesentium! At, quis hic!";
 
 const weatherVisualisers = [
   { key: "temp", name: "Temperature (°C)", color: "#ff7300", type: "line" },
@@ -209,6 +207,7 @@ function App() {
     return "Waning Crescent";
   }
 
+  //processes the data got from
   const processWeatherData = (weatherData: any, init: string) => {
     const year = parseInt(init.slice(0, 4));
     const month = parseInt(init.slice(4, 6)) - 1; //js months are 0 based
@@ -312,6 +311,7 @@ function App() {
     }
   };
 
+  //for the info when clicking. It uses wikipedia.
   const [selectedStarId, setSelectedStarId] = useState<string | null>(null);
   const [showStarInfo, setShowStarInfo] = useState<boolean>(false);
   const [starInfo, setStarInfo] = useState<{
@@ -361,6 +361,20 @@ function App() {
     }
   };
 
+  //initial dialogue.
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const initialDialog = sessionStorage.getItem("initialDialog");
+    if (!initialDialog) {
+      dialogRef.current?.showModal();
+    }
+  }, []);
+  const closeDialog = () => {
+    dialogRef.current?.close();
+    sessionStorage.setItem("initialDialog", "true");
+  };
+
+
   return (
     <>
       <AnimatePresence mode="wait">
@@ -372,9 +386,20 @@ function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeInOut" }}
         >
+          <dialog ref={dialogRef}>
+            <h2>Welcome to Astrary!</h2>
+            <p>
+              Just a heads up, the star identifier used within the site is HIP
+              (Hipparcos).
+            </p>
+            <form method="dialog">
+              <button onClick={closeDialog} className="button-primary">
+                OK
+              </button>
+            </form>
+          </dialog>
           {activeScreen === "location" && (
             <div className="locationScreen">
-              <h2>Choose a Location to Begin</h2>
               <button onClick={getLocation} className="locationBtn">
                 {isLoading ? "Loading..." : "Use Current Location"}
               </button>
@@ -442,9 +467,9 @@ function App() {
 
               <div className={`chatbot ${isOpen ? "open" : ""}`}>
                 <div className="chatHeader">
-                  Chatbot Header
+                  <p className="chatbotHeader">Chatbot Header </p>
                   <button
-                    className="buttonClose"
+                    className="buttonClose buttonChatbotClose"
                     onClick={() => setIsOpen(false)}
                   >
                     ✖
@@ -683,9 +708,9 @@ function App() {
 
               <div className={`chatbot ${isOpen ? "open" : ""}`}>
                 <div className="chatHeader">
-                  Chatbot Header
+                  <p className="chatbotHeader">Chatbot Header </p>
                   <button
-                    className="buttonClose"
+                    className="buttonClose buttonChatbotClose"
                     onClick={() => setIsOpen(false)}
                   >
                     ✖
@@ -698,6 +723,16 @@ function App() {
                         {msg.text}
                       </div>
                     ))}
+                    {botLoading && (
+                      <motion.div
+                        className="message bot"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                      >
+                        <span>Astrary is thinking...</span>
+                      </motion.div>
+                    )}
                   </div>
                   <div className="chatInput">
                     <input

@@ -1,5 +1,5 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Text } from "@react-three/drei";
+import { OrbitControls, Cloud } from "@react-three/drei";
 import * as THREE from "three";
 import { useMemo, useRef, useState, useEffect } from "react";
 // @ts-ignore
@@ -219,7 +219,7 @@ export default function NightSky({
 
           //getting the shortest distance.
           const distance = raycaster.ray.distanceToPoint(point);
-          
+
           //distance tolerance.
           if (distance < 1.5 && distance < closestDistance) {
             closestDistance = distance;
@@ -275,6 +275,7 @@ export default function NightSky({
     <Canvas
       camera={{ position: [0, 1, 3] }}
       style={{ width: "100vw", height: "100vh" }}
+      
     >
       <ambientLight intensity={0.5} />
       <StarField

@@ -39,10 +39,8 @@
   right: 20px;
   height: 50%;
   max-height: 500px;
-  background: var(--primary);
   color: white;
   overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
   z-index: 1001;
   opacity: 0;
   transform: translateY(20px);
@@ -57,9 +55,10 @@
 }
 
 .buttonClose {
-  background: white;
-  color: var(--secondary);
-  border: none;
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.0);
+  color: white;
+  border: 1px solid white;
   padding: 5px 10px;
   cursor: pointer;
 }
@@ -68,8 +67,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
-  background: var(--secondary);
+  background: rgba(0, 0, 0, 0.0);
+  border: 1px solid white;
   font-weight: bold;
 }
 
@@ -79,7 +78,8 @@
   height: 100%;
   flex-grow: 1;
   overflow-y: auto;
-  background: var(--primary);
+  background: rgba(0, 0, 0, 0.0);
+  border: 1px solid white;
 }
 
 .chatContent {
@@ -98,8 +98,22 @@
   font-size: 14px;
   color: var(--text);
   outline: none;
-  background-color: var(--primary);
+  background: rgba(0, 0, 0, 0.0);
   box-sizing: border-box;
+}
+
+.chatbotHeader {
+  padding-left: 1em;
+}
+
+.buttonChatbotClose{
+  border: none;
+  border-left: 1px solid white;
+  padding-left: 1.5em;
+  padding-right: 1.5em;
+
+
+  height: 100%;
 }
 
 .message {
@@ -151,17 +165,18 @@
 
 .locationBtn {
   display: inline-flex;
-  background-color: #1f2937;
+  background-color: rgba(0, 0, 0, 0.0);
   color: #ffffff;
   font-weight: 500;
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
-  border: none;
-  border-radius: 4px;
+  border: 1px solid white;
   cursor: pointer;
   align-items: center;
   justify-content: center;
+  font-weight: bold;
 }
+
 
 .headerLocation {
   font-size: 1.25rem;
@@ -213,7 +228,7 @@
   width: min(300px, 90%);
   max-height: 80vh;
   overflow-y: auto;
-  background: var(--primary);
+  border: 1px solid white;
   color: white;
   border-radius: 12px;
   z-index: 9999;
@@ -233,6 +248,21 @@
   justify-content: space-between;
   margin-top: 1rem;
 }
+
+dialog{
+  width: min(80%, 500px);
+  padding: 2em;
+  padding-top: 1em;
+  background-color: var(--background);
+  color: var(--text);
+  border: 0px;
+  border-radius: 0.5em;
+}
+
+dialog::backdrop{
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
 
 @media (min-width: 768px) {
   .conditionsLayout {
