@@ -236,81 +236,6 @@ function App() {
       });
   };
 
-  //I am not a big fan of using multiple ternary lines as I find them to be unreadable
-  const renderChartByType = (
-    type: string,
-    key: string,
-    name: string,
-    color: string,
-    data: any[]
-  ): any => {
-    switch (type) {
-      case "line":
-        return (
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="time"
-              tickFormatter={(time) =>
-                new Date(time).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              }
-            />
-            <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
-            <Tooltip />
-            <Line type="monotone" dataKey={key} stroke={color} name={name} />
-          </LineChart>
-        );
-      case "area":
-        return (
-          <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="time"
-              tickFormatter={(time) =>
-                new Date(time).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              }
-            />
-            <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
-            <Tooltip />
-            <Area
-              type="monotone"
-              dataKey={key}
-              stroke={color}
-              fill={color}
-              fillOpacity={0.3}
-              name={name}
-            />
-          </AreaChart>
-        );
-      case "bar":
-        return (
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="time"
-              tickFormatter={(time) =>
-                new Date(time).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              }
-            />
-            <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
-            <Tooltip />
-            <Bar dataKey={key} fill={color} name={name} />
-          </BarChart>
-        );
-      default:
-        return null;
-    }
-  };
-
   //for the info when clicking. It uses wikipedia.
   const [selectedStarId, setSelectedStarId] = useState<string | null>(null);
   const [showStarInfo, setShowStarInfo] = useState<boolean>(false);
@@ -373,7 +298,67 @@ function App() {
     dialogRef.current?.close();
     sessionStorage.setItem("initialDialog", "true");
   };
+  function rateConditions(data: any, sunCalc: any, time: Date): string {
+    //daytime
+    if (sunCalc.sunrise && sunCalc.sunset) {
+      if (time > sunCalc.sunrise && time < sunCalc.sunset) {
+        return "Daytime";
+      }
+    }
+    const init = weatherData.init;
+    const year = parseInt(init.slice(0, 4));
+    const month = parseInt(init.slice(4, 6)) - 1;
+    const day = parseInt(init.slice(6, 8));
+    const hour = parseInt(init.slice(8, 10));
+    const initDate = new Date(year, month, day, hour);
 
+    let closest = null;
+    let minDiff = Infinity;
+
+    for (const entry of weatherData.dataseries) {
+      const entryTime = new Date(
+        initDate.getTime() + entry.timepoint * 60 * 60 * 1000
+      );
+      const diff = Math.abs(entryTime.getTime() - time.getTime());
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = entry;
+      }
+    }
+
+    if (!closest) return "No matching weather data";
+    let score = 0;
+
+    //cloud cover
+    if (data.cloudcover <= 2) score += 2;
+    else if (data.cloudcover <= 5) score += 1;
+    else if (data.cloudcover >= 8) score -= 2;
+
+    //seeing
+    if (data.seeing >= 5) score += 2;
+    else if (data.seeing >= 3) score += 1;
+    else score -= 1;
+
+    //transparency
+    if (data.transparency >= 6) score += 2;
+    else if (data.transparency >= 3) score += 1;
+    else score -= 1;
+
+    //precipitation
+    if (data.prec_type !== "none") score -= 3;
+
+    //moon illumination
+    const moonIllum = sunCalc?.moon?.fraction || 0;
+    if (moonIllum > 0.75) score -= 2;
+    else if (moonIllum > 0.5) score -= 1;
+
+    //final rating
+    if (score >= 5) return "Excellent";
+    if (score >= 3) return "Good";
+    if (score >= 1) return "Okay";
+    if (score >= -1) return "Poor";
+    return "Terrible";
+  }
 
   return (
     <>
@@ -437,33 +422,49 @@ function App() {
                 )}
               </AnimatePresence>
 
-              <div className="locationDisplay overlay">
-                <h2 className="headerLocation">
-                  {cityName}, {countryName}
-                </h2>
-
-                <button
-                  className="btnLocationChange"
-                  onClick={() => setActiveScreen("location")}
-                >
-                  [Change]
-                </button>
+              <div className="locationInfo">
+                <div className="locationDisplay overlay">
+                  <h2 className="headerLocation">
+                    {cityName}, {countryName}
+                  </h2>
+                  <button
+                    className="btnLocationChange"
+                    onClick={() => setActiveScreen("location")}
+                  >
+                    [Change]
+                  </button>
+                </div>
+                <div className="overlay scoreDisplay">
+                  <p className="scoreLabel">
+                    Stargazing Score:{" "}
+                    {weatherData && weatherData.dataseries?.length && sunCalc
+                      ? rateConditions(weatherData, sunCalc, skyTime)
+                      : "Calculating..."}
+                  </p>
+                  <button
+                    className="btnLocationChange"
+                    onClick={() => setActiveScreen("conditions")}
+                  >
+                    [Find out more]
+                  </button>
+                </div>
               </div>
-
-              <button
-                className="chatToggle overlay"
-                onClick={() => setIsOpen(true)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  fill="var(--text)"
+              {!isOpen && (
+                <button
+                  className="chatToggle overlay"
+                  onClick={() => setIsOpen(true)}
                 >
-                  <path d="M240-400h320v-80H240zm0-120h480v-80H240zm0-120h480v-80H240zM80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240zm126-240h594v-480H160v525zm-46 0v-480z" />
-                </svg>
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    fill="var(--text)"
+                  >
+                    <path d="M240-400h320v-80H240zm0-120h480v-80H240zm0-120h480v-80H240zM80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240zm126-240h594v-480H160v525zm-46 0v-480z" />
+                  </svg>
+                </button>
+              )}
 
               <div className={`chatbot ${isOpen ? "open" : ""}`}>
                 <div className="chatHeader">
@@ -507,23 +508,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              <button
-                style={{ right: "90px" }}
-                className="chatToggle overlay"
-                onClick={() => setActiveScreen("conditions")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  className="bi bi-clouds"
-                  viewBox="0 0 16 16"
-                >
-                  <path d="M16 7.5a2.5 2.5 0 0 1-1.456 2.272 3.5 3.5 0 0 0-.65-.824 1.5 1.5 0 0 0-.789-2.896.5.5 0 0 1-.627-.421 3 3 0 0 0-5.22-1.625 5.6 5.6 0 0 0-1.276.088 4.002 4.002 0 0 1 7.392.91A2.5 2.5 0 0 1 16 7.5" />
-                  <path d="M7 5a4.5 4.5 0 0 1 4.473 4h.027a2.5 2.5 0 0 1 0 5H3a3 3 0 0 1-.247-5.99A4.5 4.5 0 0 1 7 5m3.5 4.5a3.5 3.5 0 0 0-6.89-.873.5.5 0 0 1-.51.375A2 2 0 1 0 3 13h8.5a1.5 1.5 0 1 0-.376-2.953.5.5 0 0 1-.624-.492z" />
-                </svg>
-              </button>
+
               <div id="nightSky">
                 {location && (
                   <div id="nightSky">
@@ -537,33 +522,34 @@ function App() {
                   </div>
                 )}
               </div>
+              {!isOpen && (
+                <div className="overlay timeSlider">
+                  <p>{new Date().toLocaleDateString()}</p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1439}
+                    step={1}
+                    value={skyTime.getHours() * 60 + skyTime.getMinutes()}
+                    onChange={(e) => {
+                      const totalMinutes = parseInt(e.target.value, 10);
+                      const hour = Math.floor(totalMinutes / 60);
+                      const minute = totalMinutes % 60;
 
-              <div className="overlay timeSlider">
-                <input
-                  type="range"
-                  min={0}
-                  max={1439}
-                  step={1}
-                  value={skyTime.getHours() * 60 + skyTime.getMinutes()}
-                  onChange={(e) => {
-                    const totalMinutes = parseInt(e.target.value, 10);
-                    const hour = Math.floor(totalMinutes / 60);
-                    const minute = totalMinutes % 60;
+                      const base = new Date(skyTime);
+                      base.setHours(hour, minute, 0, 0);
 
-                    const base = new Date(skyTime);
-                    base.setHours(hour, minute, 0, 0);
-
-                    setSkyTime(new Date(base));
-                  }}
-                />
-                <p>
-                  {skyTime.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
-                  — {skyTime.toISOString()}
-                </p>
-              </div>
+                      setSkyTime(new Date(base));
+                    }}
+                  />
+                  <p>
+                    {skyTime.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              )}
             </main>
           )}
 
@@ -571,6 +557,12 @@ function App() {
             <div key="weatherScreen" className="screen">
               <div className="conditionsLayout">
                 <div className="weatherPanel">
+                  <button
+                    className="locationBtn"
+                    onClick={() => setActiveScreen("nightSky")}
+                  >
+                    Go back
+                  </button>
                   <h2>
                     Astronomical Conditions for {cityName}, {countryName}
                   </h2>
@@ -690,81 +682,6 @@ function App() {
                   />
                 </div>
               </div>
-
-              <button
-                className="chatToggle overlay"
-                onClick={() => setIsOpen(true)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  fill="var(--text)"
-                >
-                  <path d="M240-400h320v-80H240zm0-120h480v-80H240zm0-120h480v-80H240zM80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240zm126-240h594v-480H160v525zm-46 0v-480z" />
-                </svg>
-              </button>
-
-              <div className={`chatbot ${isOpen ? "open" : ""}`}>
-                <div className="chatHeader">
-                  <p className="chatbotHeader">Chatbot Header </p>
-                  <button
-                    className="buttonClose buttonChatbotClose"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    ✖
-                  </button>
-                </div>
-                <div className="chatBody">
-                  <div className="chatContent">
-                    {messages.map((msg, index) => (
-                      <div key={index} className={`message ${msg.sender}`}>
-                        {msg.text}
-                      </div>
-                    ))}
-                    {botLoading && (
-                      <motion.div
-                        className="message bot"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5, ease: "easeInOut" }}
-                      >
-                        <span>Astrary is thinking...</span>
-                      </motion.div>
-                    )}
-                  </div>
-                  <div className="chatInput">
-                    <input
-                      type="text"
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && chatMessage.trim()) {
-                          handleSendMessage();
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <button
-                style={{ right: "90px" }}
-                className="chatToggle overlay"
-                onClick={() => setActiveScreen("nightSky")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  className="bi bi-clouds"
-                  viewBox="0 0 16 16"
-                >
-                  <path d="M16 7.5a2.5 2.5 0 0 1-1.456 2.272 3.5 3.5 0 0 0-.65-.824 1.5 1.5 0 0 0-.789-2.896.5.5 0 0 1-.627-.421 3 3 0 0 0-5.22-1.625 5.6 5.6 0 0 0-1.276.088 4.002 4.002 0 0 1 7.392.91A2.5 2.5 0 0 1 16 7.5" />
-                  <path d="M7 5a4.5 4.5 0 0 1 4.473 4h.027a2.5 2.5 0 0 1 0 5H3a3 3 0 0 1-.247-5.99A4.5 4.5 0 0 1 7 5m3.5 4.5a3.5 3.5 0 0 0-6.89-.873.5.5 0 0 1-.51.375A2 2 0 1 0 3 13h8.5a1.5 1.5 0 1 0-.376-2.953.5.5 0 0 1-.624-.492z" />
-                </svg>
-              </button>
             </div>
           )}
         </motion.div>
@@ -774,3 +691,78 @@ function App() {
 }
 
 export default App;
+
+//I am not a big fan of using multiple ternary lines as I find them to be unreadable
+export const renderChartByType = (
+  type: string,
+  key: string,
+  name: string,
+  color: string,
+  data: any[]
+): any => {
+  switch (type) {
+    case "line":
+      return (
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="time"
+            tickFormatter={(time) =>
+              new Date(time).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            }
+          />
+          <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
+          <Tooltip />
+          <Line type="monotone" dataKey={key} stroke={color} name={name} />
+        </LineChart>
+      );
+    case "area":
+      return (
+        <AreaChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="time"
+            tickFormatter={(time) =>
+              new Date(time).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            }
+          />
+          <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
+          <Tooltip />
+          <Area
+            type="monotone"
+            dataKey={key}
+            stroke={color}
+            fill={color}
+            fillOpacity={0.3}
+            name={name}
+          />
+        </AreaChart>
+      );
+    case "bar":
+      return (
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="time"
+            tickFormatter={(time) =>
+              new Date(time).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            }
+          />
+          <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
+          <Tooltip />
+          <Bar dataKey={key} fill={color} name={name} />
+        </BarChart>
+      );
+    default:
+      return null;
+  }
+};
