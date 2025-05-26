@@ -1,3 +1,16 @@
+dialog {
+  width: min(80%, 500px);
+  padding: 2em;
+  padding-top: 1em;
+  background-color: var(--background);
+  color: var(--text);
+  border: 0px;
+  border-radius: 0.5em;
+}
+
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.8);
+}
 
 .screen {
   display: flex;
@@ -78,7 +91,7 @@
   flex-direction: column;
   height: 100%;
   flex-grow: 1;
-  overflow-y: auto;
+  overflow: hidden;
   background: rgba(0, 0, 0, 0);
   border: 1px solid white;
 }
@@ -86,6 +99,7 @@
 .chatContent {
   flex: 1;
   padding: 10px;
+  overflow-y: auto;
 }
 
 .chatInput {
@@ -127,7 +141,7 @@
 
 .bot {
   padding: 1em;
-  background-color: rgba(29, 29, 29, 0.486);
+  background-color: rgba(134, 140, 233, 0.1);
 }
 
 #nightSky {
@@ -153,6 +167,7 @@
   top: 0.25rem;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 99999;
   position: absolute;
   display: flex;
   flex-direction: column;
@@ -189,7 +204,7 @@
   border-radius: 8px;
 }
 
-.scoreLabel{
+.scoreLabel {
   margin: 0px;
 }
 
@@ -241,15 +256,15 @@
   bottom: 2rem;
   left: 1rem;
   width: 80%;
-  max-width: 300px;
+  max-width: 350px;
   max-height: 40vh;
-  overflow-y: auto;
   border: 1px solid white;
   color: white;
-  border-radius: 12px;
   z-index: 9999;
-  padding: 2rem;
   text-align: left;
+
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
 .starOverlay a {
@@ -259,24 +274,79 @@
   margin-right: 1rem;
 }
 
-.infoActions {
+.starInfoHeader {
   display: flex;
   justify-content: space-between;
-  margin-top: 1rem;
+  padding-left: 1em;
+  border-bottom: 1px solid white;
+  align-items: center;
 }
 
-dialog {
-  width: min(80%, 500px);
-  padding: 2em;
-  padding-top: 1em;
-  background-color: var(--background);
-  color: var(--text);
-  border: 0px;
-  border-radius: 0.5em;
+.starInfoTitle {
+  margin: 0px;
 }
 
-dialog::backdrop {
-  background-color: rgba(0, 0, 0, 0.8);
+.starInfoClose {
+  background-color: rgba(0, 0, 0, 0);
+  border-left: 1px solid white;
+  padding: 1em;
+  cursor: pointer;
+}
+
+.starInfoBody {
+  padding: 1em;
+  overflow-y: auto;
+}
+
+.starOverlay::-webkit-scrollbar {
+  width: 8px;
+}
+
+.starOverlay::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.starOverlay::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.calendarToggle {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0);
+  color: white;
+  border: 1px solid white;
+  padding: 12px 16px;
+  font-size: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.eventsOverlay {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  bottom: 2rem;
+  left: 1rem;
+  width: 80%;
+  max-width: 500px;
+  height: 50vh;
+  border: 1px solid white;
+  color: white;
+  z-index: 9999;
+  background-color: rgba(0, 0, 0, 0);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+iframe {
+  height: 100%;
+  border: none;
 }
 
 @media (min-width: 768px) {
@@ -307,5 +377,10 @@ dialog::backdrop {
   .chartHeading {
     font-size: "1.2rem";
     margin-bottom: 20px;
+  }
+
+  .starOverlay {
+    max-width: 400px;
+    max-height: 50vh;
   }
 }

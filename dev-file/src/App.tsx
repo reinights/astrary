@@ -171,30 +171,51 @@ function App() {
 
   const [botLoading, setBotLoading] = useState<boolean>(false);
   //follow this guide: https://blog.lancedb.com/create-llm-apps-using-rag/
-  const handleSendMessage = async () => {
-    // const userMsg = chatMessage.trim();
-    // if (!userMsg) return;
-    // setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
-    // setChatMessage("");
-    // setBotLoading(true);
-    // try {
-    //   const res = await ai.models.generateContent({
-    //     model: "gemini-2.0-flash",
-    //     contents: userMsg,
-    //   });
-    //   console.log(res)
-    //   console.log(res.text);
-    //   setMessages((prev) => [...prev, { sender: "bot", text: res.text ?? "..."  }]);
-    // } catch (error) {
-    //   console.error("AI Error:", error);
-    //   setMessages((prev) => [
-    //     ...prev,
-    //     { sender: "bot", text: "Something went wrong, please try again later." },
-    //   ]);
-    // }
-    // finally {
-    //   setBotLoading(false);
-    // }
+  // const handleSendMessage = async () => {
+  //   // const userMsg = chatMessage.trim();
+  //   // if (!userMsg) return;
+  //   // setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
+  //   // setChatMessage("");
+  //   // setBotLoading(true);
+  //   // try {
+  //   //   const res = await ai.models.generateContent({
+  //   //     model: "gemini-2.0-flash",
+  //   //     contents: userMsg,
+  //   //   });
+  //   //   console.log(res)
+  //   //   console.log(res.text);
+  //   //   setMessages((prev) => [...prev, { sender: "bot", text: res.text ?? "..."  }]);
+  //   // } catch (error) {
+  //   //   console.error("AI Error:", error);
+  //   //   setMessages((prev) => [
+  //   //     ...prev,
+  //   //     { sender: "bot", text: "Something went wrong, please try again later." },
+  //   //   ]);
+  //   // }
+  //   // finally {
+  //   //   setBotLoading(false);
+  //   // }
+  // };
+
+  const handleSendMessage = () => {
+    const userMsg = chatMessage.trim();
+    const fillerText =
+      "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque assumenda, repellat quis itaque delectus nemo possimus, repellendus iure explicabo modi neque nostrum commodi placeat nisi, cupiditate distinctio aperiam. Quos repellat molestiae tempore? Saepe ea esse sit praesentium! At, quis hic!";
+
+    // stores the user message
+    setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
+    setChatMessage("");
+
+    // Simulate bot response with lorem text
+    setTimeout(() => {
+      const fillerWords = fillerText.split(" ");
+
+      //randomises the length of the bot for simulation purposes
+      const randomLength = Math.floor(Math.random() * 20) + 5;
+      const botMsg = fillerWords.slice(0, randomLength).join(" ");
+
+      setMessages((prev) => [...prev, { sender: "bot", text: botMsg }]);
+    }, 500); // lil delay for realism
   };
   function getMoonPhaseName(phase: number): string {
     if (phase < 0.03 || phase > 0.97) return "New Moon";
@@ -283,20 +304,22 @@ function App() {
       });
     } finally {
       setShowStarInfo(true);
+      setIsOpen(false);
+      setShowCalendar(false);
     }
   };
 
   //initial dialogue.
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    const initialDialog = sessionStorage.getItem("initialDialog");
+    const initialDialog = localStorage.getItem("initialDialog");
     if (!initialDialog) {
       dialogRef.current?.showModal();
     }
   }, []);
   const closeDialog = () => {
     dialogRef.current?.close();
-    sessionStorage.setItem("initialDialog", "true");
+    localStorage.setItem("initialDialog", "true");
   };
   function rateConditions(data: any, sunCalc: any, time: Date): string {
     //daytime
@@ -332,34 +355,36 @@ function App() {
     //cloud cover
     if (data.cloudcover <= 2) score += 2;
     else if (data.cloudcover <= 5) score += 1;
-    else if (data.cloudcover >= 8) score -= 2;
+    else if (data.cloudcover <= 7) score += 0;
+    else score -= 1;
 
     //seeing
     if (data.seeing >= 5) score += 2;
     else if (data.seeing >= 3) score += 1;
-    else score -= 1;
+    else score += 0;
 
     //transparency
-    if (data.transparency >= 6) score += 2;
+    if (data.transparency >= 5) score += 2;
     else if (data.transparency >= 3) score += 1;
-    else score -= 1;
 
     //precipitation
-    if (data.prec_type !== "none") score -= 3;
+    if (data.prec_type && data.prec_type !== "none") {
+      score -= 2;
+    }
 
     //moon illumination
     const moonIllum = sunCalc?.moon?.fraction || 0;
-    if (moonIllum > 0.75) score -= 2;
-    else if (moonIllum > 0.5) score -= 1;
+    if (moonIllum > 0.9) score -= 1;
+    else if (moonIllum > 0.6) score -= 0.5;
 
-    //final rating
-    if (score >= 5) return "Excellent";
-    if (score >= 3) return "Good";
-    if (score >= 1) return "Okay";
-    if (score >= -1) return "Poor";
-    return "Terrible";
+    if (score >= 6) return "Excellent";
+    if (score >= 4) return "Good";
+    if (score >= 2) return "Decent";
+    if (score >= 0) return "Meh";
+    return "Poor";
   }
 
+  const [showCalendar, setShowCalendar] = useState(false);
   return (
     <>
       <AnimatePresence mode="wait">
@@ -404,19 +429,21 @@ function App() {
                     exit={{ opacity: 0, y: 20 }}
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
-                    <h2>{starInfo.title}</h2>
-                    <p>{starInfo.description}</p>
-                    <p>{starInfo.extract}</p>
-                    <div className="infoActions">
+                    <div className="starInfoHeader">
+                      <h3 className="starInfoTitle">{starInfo.title}</h3>
+                      <button
+                        className="starInfoClose"
+                        onClick={() => setShowStarInfo(false)}
+                      >
+                        ✖
+                      </button>
+                    </div>
+                    <div className="starInfoBody">
+                      <p>{starInfo.description}</p>
+                      <p>{starInfo.extract}</p>
                       <a href={starInfo.url} target="_blank">
                         Find out more
                       </a>
-                      <button
-                        className="buttonClose"
-                        onClick={() => setShowStarInfo(false)}
-                      >
-                        Close
-                      </button>
                     </div>
                   </motion.div>
                 )}
@@ -449,7 +476,7 @@ function App() {
                   </button>
                 </div>
               </div>
-              {!isOpen && (
+              {!isOpen && !showStarInfo && !showCalendar && (
                 <button
                   className="chatToggle overlay"
                   onClick={() => setIsOpen(true)}
@@ -466,9 +493,39 @@ function App() {
                 </button>
               )}
 
+              {!isOpen && !showStarInfo && !showCalendar && (
+                <button
+                  className="calendarToggle overlay"
+                  onClick={() => setShowCalendar(true)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M8 2v4" />
+                    <path d="M16 2v4" />
+                    <rect width="18" height="18" x="3" y="4" rx="2" />
+                    <path d="M3 10h18" />
+                    <path d="M8 14h.01" />
+                    <path d="M12 14h.01" />
+                    <path d="M16 14h.01" />
+                    <path d="M8 18h.01" />
+                    <path d="M12 18h.01" />
+                    <path d="M16 18h.01" />
+                  </svg>
+                </button>
+              )}
+
               <div className={`chatbot ${isOpen ? "open" : ""}`}>
                 <div className="chatHeader">
-                  <p className="chatbotHeader">Chatbot Header </p>
+                  <p className="chatbotHeader">AstraBot</p>
                   <button
                     className="buttonClose buttonChatbotClose"
                     onClick={() => setIsOpen(false)}
@@ -508,6 +565,35 @@ function App() {
                   </div>
                 </div>
               </div>
+              {showCalendar && (
+                <motion.div
+                  className="eventsOverlay"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                >
+                  <div className="starInfoHeader">
+                    <h3 className="starInfoTitle">Upcoming Events</h3>
+                    <button
+                      className="starInfoClose"
+                      onClick={() => setShowCalendar(false)}
+                    >
+                      ✖
+                    </button>
+                  </div>
+                  {/* Currently only shows in London. I believe atm it's unnecassry work to do further. */}
+                  <iframe
+                    style={{
+                      border: "none",
+                      width: "100%",
+                      height: "100%",
+                      overflow: "hidden",
+                    }}
+                    src="https://in-the-sky.org/widgets/newscal.php?skin=1&locale=1&town=2643743"
+                  />
+                </motion.div>
+              )}
 
               <div id="nightSky">
                 {location && (
@@ -522,9 +608,8 @@ function App() {
                   </div>
                 )}
               </div>
-              {!isOpen && (
+              {!isOpen && !showStarInfo && !showCalendar && (
                 <div className="overlay timeSlider">
-                  <p>{new Date().toLocaleDateString()}</p>
                   <input
                     type="range"
                     min={0}
@@ -666,20 +751,6 @@ function App() {
                       ))}
                     </div>
                   )}
-                </div>
-
-                <div className="eventsPanel">
-                  <h3>Upcoming Events</h3>
-                  {/* Currently only shows in London. I believe atm it's unnecassry work to do further. */}
-                  <iframe
-                    style={{
-                      border: "none",
-                      width: "100%",
-                      height: "759px",
-                      overflow: "hidden",
-                    }}
-                    src="https://in-the-sky.org/widgets/newscal.php?skin=1&locale=1&town=2643743"
-                  />
                 </div>
               </div>
             </div>

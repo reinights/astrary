@@ -24,7 +24,7 @@ function LocationPicker({ onLocationSelect }: { onLocationSelect: (coords: Coord
   return (
     <div className="mapContainer">
       <MapContainer center={position} zoom={6} className="leafletContainer">
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         
         <Marker position={position} />
 
