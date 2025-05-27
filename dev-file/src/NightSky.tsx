@@ -1,5 +1,5 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Cloud } from "@react-three/drei";
+import { OrbitControls, Cloud, CameraControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useMemo, useRef, useState, useEffect } from "react";
 // @ts-ignore
@@ -244,62 +244,105 @@ export default function NightSky({
         gl.domElement.removeEventListener("click", handleClick);
       };
     }, [camera, gl, starMap, onStarClick]);
-
     return (
-      <points>
-        <bufferGeometry>
-          <primitive
-            attach="attributes-position"
-            object={new THREE.BufferAttribute(positions, 3)}
-          />
-          <primitive
-            attach="attributes-alpha"
-            object={new THREE.BufferAttribute(alphas, 1)}
-          />
-        </bufferGeometry>
+      <>
+        <points>
+          <bufferGeometry>
+            <primitive
+              attach="attributes-position"
+              object={new THREE.BufferAttribute(positions, 3)}
+            />
+            <primitive
+              attach="attributes-alpha"
+              object={new THREE.BufferAttribute(alphas, 1)}
+            />
+          </bufferGeometry>
 
-        <shaderMaterial
-          vertexShader={vertexShader}
-          fragmentShader={fragmentShader}
-          transparent
-          uniforms={{
-            size: { value: 3.0 },
-            color: { value: new THREE.Color("white") },
-          }}
-        />
-      </points>
+          <shaderMaterial
+            vertexShader={vertexShader}
+            fragmentShader={fragmentShader}
+            transparent
+            uniforms={{
+              size: { value: 3.0 },
+              color: { value: new THREE.Color("white") },
+            }}
+          />
+        </points>
+      </>
     );
   }
+  const controlsRef = useRef<any>(null);
+  const goToStar = (id: string) => {
+    if (!controlsRef.current || !starMap[id]) return;
 
+    const [x, y, z] = starMap[id];
+    const starPosition = new THREE.Vector3(x, y, z);
+
+    const camera = controlsRef.current._spherical;
+    const cameraEnd = controlsRef.current._sphericalEnd;
+
+    const starDirection = starPosition.clone().normalize();
+
+    const newCameraDirection = starDirection.clone().negate();
+
+    const targetTheta = Math.atan2(newCameraDirection.x, newCameraDirection.z);
+    const targetPhi = Math.acos(newCameraDirection.y);
+
+    cameraEnd.theta = targetTheta;
+    cameraEnd.phi = targetPhi;
+    cameraEnd.radius = camera.radius;
+
+    controlsRef.current._needsUpdate = true;
+  };
   return (
-    <Canvas
-      camera={{ position: [0, 1, 3] }}
-      style={{ width: "100vw", height: "100vh" }}
-      
-    >
-      <ambientLight intensity={0.5} />
-      <StarField
-        positions={positions}
-        alphas={alphas}
-        starMap={starMap}
-        onStarClick={onStarClick}
-      />
-
-      <mesh position={[0, -1.5, 0]} rotation={[Math.PI, 0, 0]}>
-        <sphereGeometry args={[10, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
-        <meshStandardMaterial
-          color="#222"
-          roughness={1}
-          metalness={0}
-          side={THREE.DoubleSide}
+    <>
+      <button
+        onClick={() => goToStar("HIP 32349")}
+        style={{
+          position: "fixed",
+          top: "20px",
+          left: "20px",
+          zIndex: 10,
+          padding: "10px",
+        }}
+      >
+        Find Phecda
+      </button>
+      <Canvas
+        camera={{ position: [0, 1, 3] }}
+        style={{ width: "100vw", height: "100vh" }}
+      >
+        <ambientLight intensity={0.5} />
+        <StarField
+          positions={positions}
+          alphas={alphas}
+          starMap={starMap}
+          onStarClick={onStarClick}
         />
-      </mesh>
 
-      <OrbitControls
-        enableZoom={false}
-        minPolarAngle={Math.PI * 0.5}
-        maxPolarAngle={Math.PI * 0.9}
-      />
-    </Canvas>
+        <mesh position={[0, -1.5, 0]} rotation={[Math.PI, 0, 0]}>
+          <sphereGeometry
+            args={[10, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5]}
+          />
+          <meshStandardMaterial
+            color="#222"
+            roughness={1}
+            metalness={0}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        <CameraControls
+          ref={controlsRef}
+          //disabling zoom https://discourse.threejs.org/t/is-it-possible-to-disable-the-zooming-of-cameracontrols-react-three-drei/67476/4
+          minZoom={0}
+          maxZoom={0}
+          minDistance={0.5}
+          maxDistance={2.5}
+          minPolarAngle={Math.PI * 0.5}
+          maxPolarAngle={Math.PI * 0.9}
+        />
+      </Canvas>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 //Currently using Prettier for code formatting: https://prettier.io/docs/
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, transform } from "framer-motion";
 import "./App.css";
 import LocationPicker from "./LocationPicker";
 import NightSky from "./NightSky";
@@ -424,9 +424,10 @@ function App() {
                 {showStarInfo && starInfo && (
                   <motion.div
                     className="starOverlay"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
+                    style={{left: '50%'}}
+                    animate={{ opacity: 1, y: 0, x: "-50%" }}
+                    initial={{ opacity: 0, y: 20, x: "-50%" }}
+                    exit={{ opacity: 0, y: 20, x: "-50%" }}
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
                     <div className="starInfoHeader">
