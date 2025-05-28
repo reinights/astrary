@@ -7,6 +7,7 @@ import LocationPicker from "./LocationPicker";
 import NightSky from "./NightSky";
 import Papa from "papaparse";
 import SunCalc from "suncalc";
+import ReactMarkdown from "react-markdown";
 interface Coordinates {
   lat: number;
   lng: number;
@@ -26,8 +27,18 @@ import {
   BarChart,
 } from "recharts";
 
+import { GoogleGenAI } from "@google/genai";
 type Screen = "location" | "nightSky" | "conditions";
+type ChatButton = {
+  label: string;
+  target: string;
+};
 
+type Message = {
+  sender: "user" | "bot";
+  text: string;
+  buttons?: ChatButton[];
+};
 const weatherVisualisers = [
   { key: "temp", name: "Temperature (°C)", color: "#ff7300", type: "line" },
   { key: "seeing", name: "Seeing", color: "#82ca9d", type: "area" },
@@ -44,9 +55,7 @@ function App() {
   const [countryName, setCountryName] = useState<string | null>(null);
   const [starData, setStarData] = useState<any[]>([]);
   const [skyTime, setSkyTime] = useState<Date>(new Date());
-  const [messages, setMessages] = useState<
-    { sender: "user" | "bot"; text: string }[]
-  >([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [chatMessage, setChatMessage] = useState<string>("");
   const [weatherData, setWeatherData] = useState<any | null>(null);
   const [sunCalc, setSunCalc] = useState<any>(null);
@@ -170,53 +179,129 @@ function App() {
   };
 
   const [botLoading, setBotLoading] = useState<boolean>(false);
-  //follow this guide: https://blog.lancedb.com/create-llm-apps-using-rag/
-  // const handleSendMessage = async () => {
-  //   // const userMsg = chatMessage.trim();
-  //   // if (!userMsg) return;
-  //   // setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
-  //   // setChatMessage("");
-  //   // setBotLoading(true);
-  //   // try {
-  //   //   const res = await ai.models.generateContent({
-  //   //     model: "gemini-2.0-flash",
-  //   //     contents: userMsg,
-  //   //   });
-  //   //   console.log(res)
-  //   //   console.log(res.text);
-  //   //   setMessages((prev) => [...prev, { sender: "bot", text: res.text ?? "..."  }]);
-  //   // } catch (error) {
-  //   //   console.error("AI Error:", error);
-  //   //   setMessages((prev) => [
-  //   //     ...prev,
-  //   //     { sender: "bot", text: "Something went wrong, please try again later." },
-  //   //   ]);
-  //   // }
-  //   // finally {
-  //   //   setBotLoading(false);
-  //   // }
-  // };
-
-  const handleSendMessage = () => {
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API });
+  const handleSendMessage = async () => {
     const userMsg = chatMessage.trim();
-    const fillerText =
-      "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Doloremque assumenda, repellat quis itaque delectus nemo possimus, repellendus iure explicabo modi neque nostrum commodi placeat nisi, cupiditate distinctio aperiam. Quos repellat molestiae tempore? Saepe ea esse sit praesentium! At, quis hic!";
-
-    // stores the user message
+    if (!userMsg) return;
     setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
     setChatMessage("");
+    setBotLoading(true);
 
-    // Simulate bot response with lorem text
-    setTimeout(() => {
-      const fillerWords = fillerText.split(" ");
+    try {
+      const prompt = `
+You're an astronomy chatbot for a night sky app using Three.js.
 
-      //randomises the length of the bot for simulation purposes
-      const randomLength = Math.floor(Math.random() * 20) + 5;
-      const botMsg = fillerWords.slice(0, randomLength).join(" ");
+Any time you mention specific stars in your response, you must also return them as interactive buttons.
+This button will be used so that the camera will focus on the star.
+If you mention any stars, describe why in one sentence.
+And recommend at least three.
+Match the tone of the user.
 
-      setMessages((prev) => [...prev, { sender: "bot", text: botMsg }]);
-    }, 500); // lil delay for realism
+Respond in strict JSON using this format, and for the target. STRICTLY USE HIP IDENTIFIER.:
+
+{
+  "needs_buttons": true,
+  "description": "Your response here using **bold** and *italics* and bullet points",
+  "buttons": [
+    {
+      "label": "Sirius",
+      "target": "HIP 32349"
+    }
+  ]
+}
+
+If no stars are mentioned, just respond with:
+
+{
+  "needs_buttons": false,
+  "description": "Your response with markdown formatting"
+}
+
+Location: ${cityName}, ${countryName} 
+Date: ${new Date()}
+Style: Short, casual, friendly. Use markdown formatting like **bold**, *italics*, and bullet points (- item).
+
+Weather Conditions from 7timer: ${weatherData}
+Times Data: ${sunCalc}
+Always keep both of these data in mind.
+
+Dismiss unrelated to astronomy questions.
+
+User Question: ${userMsg}
+`;
+
+      const res = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+      });
+
+      console.log(res);
+      const responseText = res.text ?? "{}"; //fallback
+
+      // When sending that response, gemini reacts with using ```json [contents]```.
+      // It's ok for markdown, but I cannot parse the buttons, so we need to get rid of it.
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith("```json")) {
+        //:DDDD I love regex! :DD
+        cleanedResponse = cleanedResponse
+          .replace(/^```json\s*/, "") //replaces the starting line
+          .replace(/\s*```$/, ""); //replaces the ending line
+      } else if (cleanedResponse.startsWith("```")) {
+        cleanedResponse = cleanedResponse
+          .replace(/^```\s*/, "")
+          .replace(/\s*```$/, "");
+      }
+
+      let parsed;
+      //this block checks if the parsing is valid
+      try {
+        //I'm practically betting that the bot will actually pump out decent responses :sob:
+        parsed = JSON.parse(cleanedResponse);
+        console.log(parsed);
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: responseText,
+          },
+        ]);
+        return;
+      }
+
+      if (parsed.needs_buttons) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: parsed.description,
+            buttons: parsed.buttons,
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: parsed.description ?? "...",
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("AI Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: "Something went wrong, please try again later.",
+        },
+      ]);
+    } finally {
+      setBotLoading(false);
+      console.log(messages);
+    }
   };
+
   function getMoonPhaseName(phase: number): string {
     if (phase < 0.03 || phase > 0.97) return "New Moon";
     if (phase < 0.22) return "Waxing Crescent";
@@ -306,6 +391,7 @@ function App() {
       setShowStarInfo(true);
       setIsOpen(false);
       setShowCalendar(false);
+      setSelectedStarId(null);
     }
   };
 
@@ -385,6 +471,8 @@ function App() {
   }
 
   const [showCalendar, setShowCalendar] = useState(false);
+
+  const [focusedStarId, setFocusedStarId] = useState<string | null>(null);
   return (
     <>
       <AnimatePresence mode="wait">
@@ -424,7 +512,7 @@ function App() {
                 {showStarInfo && starInfo && (
                   <motion.div
                     className="starOverlay"
-                    style={{left: '50%'}}
+                    style={{ left: "50%" }}
                     animate={{ opacity: 1, y: 0, x: "-50%" }}
                     initial={{ opacity: 0, y: 20, x: "-50%" }}
                     exit={{ opacity: 0, y: 20, x: "-50%" }}
@@ -538,7 +626,24 @@ function App() {
                   <div className="chatContent">
                     {messages.map((msg, index) => (
                       <div key={index} className={`message ${msg.sender}`}>
-                        {msg.text}
+                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        {msg.buttons && msg.buttons.length > 0 && (
+                          <div className="message-buttons">
+                            {msg.buttons.map((button, buttonIndex) => (
+                              <button
+                                key={buttonIndex}
+                                className="button-primary"
+                                onClick={() => {
+                                  setSelectedStarId(button.target);
+                                  setFocusedStarId(button.target);
+                                  setIsOpen(false);
+                                }}
+                              >
+                                {button.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                     {botLoading && (
@@ -605,6 +710,8 @@ function App() {
                       lat={location.lat}
                       lng={location.lng}
                       onStarClick={(id) => setSelectedStarId(id)}
+                      focusedStarId={focusedStarId}
+                      setFocusedStarId={setFocusedStarId}
                     />
                   </div>
                 )}
@@ -738,15 +845,6 @@ function App() {
                               opacity: 0.7,
                             }}
                           >
-                            {/* Possibly where the AI could go */}
-                            {key === "temp" &&
-                              "Temperatures peaked in the afternoon and fell at night."}
-                            {key === "seeing" &&
-                              "Seeing conditions best around midnight."}
-                            {key === "transparency" &&
-                              "Transparency remained stable."}
-                            {key === "cloudcover" &&
-                              "Clouds were light after midnight."}
                           </p>
                         </div>
                       ))}

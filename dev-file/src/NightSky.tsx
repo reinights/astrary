@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Cloud, CameraControls } from "@react-three/drei";
 import * as THREE from "three";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useEffect } from "react";
 // @ts-ignore
 import { julian } from "astronomia";
 
@@ -34,12 +34,16 @@ export default function NightSky({
   lat,
   lng,
   onStarClick,
+  focusedStarId,
+  setFocusedStarId,
 }: {
   stars: any[];
   time: Date;
   lat: number;
   lng: number;
   onStarClick: (id: string) => void;
+  focusedStarId: string | null;
+  setFocusedStarId: (id: string | null) => void;
 }) {
   console.log("Hello.");
   console.log(stars);
@@ -272,42 +276,42 @@ export default function NightSky({
     );
   }
   const controlsRef = useRef<any>(null);
+
+  //Camera controls is an orbit camera, so it wasn't as easy as just setlook at :tear:
   const goToStar = (id: string) => {
+    console.log("Chat");
     if (!controlsRef.current || !starMap[id]) return;
+    console.log("Are we firing?");
 
     const [x, y, z] = starMap[id];
     const starPosition = new THREE.Vector3(x, y, z);
 
-    const camera = controlsRef.current._spherical;
-    const cameraEnd = controlsRef.current._sphericalEnd;
+    const cameraEnd = controlsRef.current._sphericalEnd; //value in CameraControl. The target in the sphere space.
 
-    const starDirection = starPosition.clone().normalize();
+    const starDirection = starPosition.clone().normalize(); //normalize turns the vector values to a distance of one. This is so the camera doesn't shoot forward.
 
-    const newCameraDirection = starDirection.clone().negate();
+    const newCameraDirection = starDirection.clone().negate(); //orbit cameras means that we will always look towards the center. The star direction calculates it, and negating the value means we can position ourselves to see the target.
 
+    //https://stackoverflow.com/questions/30271693/converting-between-cartesian-coordinates-and-spherical-coordinates
+    //:pray:
     const targetTheta = Math.atan2(newCameraDirection.x, newCameraDirection.z);
     const targetPhi = Math.acos(newCameraDirection.y);
 
     cameraEnd.theta = targetTheta;
     cameraEnd.phi = targetPhi;
-    cameraEnd.radius = camera.radius;
 
-    controlsRef.current._needsUpdate = true;
+    controlsRef.current._needsUpdate = true; //value in CameraControl. Triggers the movement.
   };
+
+  useEffect(() => {
+    if (focusedStarId) {
+      goToStar(focusedStarId);
+    }
+    setFocusedStarId(null);
+  }, [focusedStarId]);
+
   return (
     <>
-      <button
-        onClick={() => goToStar("HIP 32349")}
-        style={{
-          position: "fixed",
-          top: "20px",
-          left: "20px",
-          zIndex: 10,
-          padding: "10px",
-        }}
-      >
-        Find Phecda
-      </button>
       <Canvas
         camera={{ position: [0, 1, 3] }}
         style={{ width: "100vw", height: "100vh" }}

@@ -249,7 +249,8 @@ dialog::backdrop {
   width: 100%;
 }
 
-.starOverlay, .eventsOverlay {
+.starOverlay,
+.eventsOverlay {
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -257,7 +258,7 @@ dialog::backdrop {
   left: 1rem;
   width: 80%;
   max-width: 350px;
-  max-height: 40vh;
+  max-height: 50vh;
   border: 1px solid white;
   color: white;
   z-index: 9999;
@@ -267,9 +268,8 @@ dialog::backdrop {
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
-.starOverlay{
-  left: 50%;
-  transform: translateX(-50%);
+.eventsOverlay{
+  height: 100%;
 }
 
 .starOverlay a {
@@ -332,7 +332,6 @@ dialog::backdrop {
   z-index: 1000;
 }
 
-
 iframe {
   height: 100%;
   border: none;
@@ -371,5 +370,12 @@ iframe {
   .starOverlay {
     max-width: 400px;
     max-height: 50vh;
+  }
+
+  .eventsOverlay {
+    width: 100%;
+    max-width: 600px;
+    height: 90%;
+    max-height: 80vh;
   }
 }
