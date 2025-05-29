@@ -1,10 +1,9 @@
-import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Cloud, CameraControls } from "@react-three/drei";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import { OrbitControls, Cloud, CameraControls, Html } from "@react-three/drei";
 import * as THREE from "three";
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 // @ts-ignore
 import { julian } from "astronomia";
-
 //ChatGPT Help with shaders and converting values from ra/dec/mag to xyza.
 //Conversation Link:
 //https://chatgpt.com/share/67ffd32e-c694-8009-b8fb-27b7b4ebda98
@@ -346,6 +345,19 @@ export default function NightSky({
           minPolarAngle={Math.PI * 0.5}
           maxPolarAngle={Math.PI * 0.9}
         />
+
+        <Html position={[0, -3, -10]} center>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>N</div>
+        </Html>
+        <Html position={[10, -3, 0]} center>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5  }}>E</div>
+        </Html>
+        <Html position={[0, -3, 10]} center>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5  }}>S</div>
+        </Html>
+        <Html position={[-10, -3, 0]} center>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5  }}>W</div>
+        </Html>
       </Canvas>
     </>
   );

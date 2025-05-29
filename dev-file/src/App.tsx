@@ -59,6 +59,8 @@ function App() {
   const [chatMessage, setChatMessage] = useState<string>("");
   const [weatherData, setWeatherData] = useState<any | null>(null);
   const [sunCalc, setSunCalc] = useState<any>(null);
+  console.log(sunCalc)
+  console.log("time")
   useEffect(() => {
     if (!location) {
       setActiveScreen("location");
@@ -141,6 +143,7 @@ function App() {
       const moon = SunCalc.getMoonIllumination(new Date());
 
       setSunCalc({ ...sunTimes, moon });
+      console.log(sunCalc)
       setWeatherData(data);
     };
 
@@ -180,21 +183,25 @@ function App() {
 
   const [botLoading, setBotLoading] = useState<boolean>(false);
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API });
+  console.log(messages);
   const handleSendMessage = async () => {
     const userMsg = chatMessage.trim();
     if (!userMsg) return;
     setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
     setChatMessage("");
     setBotLoading(true);
-
+    //
+    const contextString = messages
+      .slice(-6)
+      .map((m) => `${m.sender === "user" ? "User" : "Bot"}: ${m.text}`)
+      .join("\n");
     try {
       const prompt = `
 You're an astronomy chatbot for a night sky app using Three.js.
 
 Any time you mention specific stars in your response, you must also return them as interactive buttons.
 This button will be used so that the camera will focus on the star.
-If you mention any stars, describe why in one sentence.
-And recommend at least three.
+If you mention any stars, describe why briefly.
 Match the tone of the user.
 
 Respond in strict JSON using this format, and for the target. STRICTLY USE HIP IDENTIFIER.:
@@ -220,6 +227,9 @@ If no stars are mentioned, just respond with:
 Location: ${cityName}, ${countryName} 
 Date: ${new Date()}
 Style: Short, casual, friendly. Use markdown formatting like **bold**, *italics*, and bullet points (- item).
+Context so far: 
+${contextString}
+
 
 Weather Conditions from 7timer: ${weatherData}
 Times Data: ${sunCalc}
@@ -539,79 +549,111 @@ User Question: ${userMsg}
               </AnimatePresence>
 
               <div className="locationInfo">
-                <div className="locationDisplay overlay">
-                  <h2 className="headerLocation">
+                <div className="overlay">
+                  <p className="headerLocation locationInfoHeaders">
                     {cityName}, {countryName}
-                  </h2>
+                  </p>
                   <button
-                    className="btnLocationChange"
+                    className="buttonScreenChange"
                     onClick={() => setActiveScreen("location")}
                   >
                     [Change]
                   </button>
                 </div>
-                <div className="overlay scoreDisplay">
-                  <p className="scoreLabel">
+                <div style={{ textAlign: "right" }} className="overlay">
+                  <p className="scoreLabel locationInfoHeaders">
                     Stargazing Score:{" "}
                     {weatherData && weatherData.dataseries?.length && sunCalc
                       ? rateConditions(weatherData, sunCalc, skyTime)
                       : "Calculating..."}
                   </p>
                   <button
-                    className="btnLocationChange"
+                    className="buttonScreenChange"
                     onClick={() => setActiveScreen("conditions")}
                   >
                     [Find out more]
                   </button>
                 </div>
               </div>
-              {!isOpen && !showStarInfo && !showCalendar && (
-                <button
-                  className="chatToggle overlay"
-                  onClick={() => setIsOpen(true)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    fill="var(--text)"
+              <div className="bottomRow">
+                {!isOpen && !showStarInfo && !showCalendar && (
+                  <button
+                    className="chatToggle overlay"
+                    onClick={() => setIsOpen(true)}
                   >
-                    <path d="M240-400h320v-80H240zm0-120h480v-80H240zm0-120h480v-80H240zM80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240zm126-240h594v-480H160v525zm-46 0v-480z" />
-                  </svg>
-                </button>
-              )}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      fill="var(--text)"
+                    >
+                      <path d="M240-400h320v-80H240zm0-120h480v-80H240zm0-120h480v-80H240zM80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240zm126-240h594v-480H160v525zm-46 0v-480z" />
+                    </svg>
+                  </button>
+                )}
 
-              {!isOpen && !showStarInfo && !showCalendar && (
-                <button
-                  className="calendarToggle overlay"
-                  onClick={() => setShowCalendar(true)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                {!isOpen && !showStarInfo && !showCalendar && (
+                  <div className="overlay wrapperTimeSlider">
+                    <p>
+                      {skyTime.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <div className="timeSliderBorder">
+                      <input
+                        className="timeSlider"
+                        type="range"
+                        min={0}
+                        max={1439}
+                        step={1}
+                        value={skyTime.getHours() * 60 + skyTime.getMinutes()}
+                        onChange={(e) => {
+                          const totalMinutes = parseInt(e.target.value, 10);
+                          const hour = Math.floor(totalMinutes / 60);
+                          const minute = totalMinutes % 60;
+
+                          const base = new Date(skyTime);
+                          base.setHours(hour, minute, 0, 0);
+
+                          setSkyTime(new Date(base));
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {!isOpen && !showStarInfo && !showCalendar && (
+                  <button
+                    className="calendarToggle overlay"
+                    onClick={() => setShowCalendar(true)}
                   >
-                    <path d="M8 2v4" />
-                    <path d="M16 2v4" />
-                    <rect width="18" height="18" x="3" y="4" rx="2" />
-                    <path d="M3 10h18" />
-                    <path d="M8 14h.01" />
-                    <path d="M12 14h.01" />
-                    <path d="M16 14h.01" />
-                    <path d="M8 18h.01" />
-                    <path d="M12 18h.01" />
-                    <path d="M16 18h.01" />
-                  </svg>
-                </button>
-              )}
-
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M8 2v4" />
+                      <path d="M16 2v4" />
+                      <rect width="18" height="18" x="3" y="4" rx="2" />
+                      <path d="M3 10h18" />
+                      <path d="M8 14h.01" />
+                      <path d="M12 14h.01" />
+                      <path d="M16 14h.01" />
+                      <path d="M8 18h.01" />
+                      <path d="M12 18h.01" />
+                      <path d="M16 18h.01" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <div className={`chatbot ${isOpen ? "open" : ""}`}>
                 <div className="chatHeader">
                   <p className="chatbotHeader">AstraBot</p>
@@ -716,33 +758,6 @@ User Question: ${userMsg}
                   </div>
                 )}
               </div>
-              {!isOpen && !showStarInfo && !showCalendar && (
-                <div className="overlay timeSlider">
-                  <input
-                    type="range"
-                    min={0}
-                    max={1439}
-                    step={1}
-                    value={skyTime.getHours() * 60 + skyTime.getMinutes()}
-                    onChange={(e) => {
-                      const totalMinutes = parseInt(e.target.value, 10);
-                      const hour = Math.floor(totalMinutes / 60);
-                      const minute = totalMinutes % 60;
-
-                      const base = new Date(skyTime);
-                      base.setHours(hour, minute, 0, 0);
-
-                      setSkyTime(new Date(base));
-                    }}
-                  />
-                  <p>
-                    {skyTime.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              )}
             </main>
           )}
 
@@ -844,8 +859,7 @@ User Question: ${userMsg}
                               fontSize: "0.85rem",
                               opacity: 0.7,
                             }}
-                          >
-                          </p>
+                          ></p>
                         </div>
                       ))}
                     </div>

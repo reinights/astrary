@@ -20,6 +20,7 @@ dialog::backdrop {
   overflow: hidden;
 }
 
+
 .overlay {
   opacity: 0.5;
   transition: opacity 0.3s ease;
@@ -163,16 +164,14 @@ dialog::backdrop {
 }
 
 .locationInfo {
-  width: auto;
+  width: 100%;
   top: 0.25rem;
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 99999;
-  position: absolute;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
   align-items: center;
+  position: absolute;
+  justify-content: space-between;
 }
 
 .locationDisplay {
@@ -197,6 +196,11 @@ dialog::backdrop {
   font-weight: bold;
 }
 
+.locationInfoHeaders {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
 .scoreDisplay {
   z-index: 15;
   display: inline-flex;
@@ -208,21 +212,18 @@ dialog::backdrop {
   margin: 0px;
 }
 
-.headerLocation {
-  font-size: 1.25rem;
-  font-weight: 400;
-}
-.btnLocationChange {
-  padding: 10px 5px;
+.buttonScreenChange {
   background: none;
   border: none;
   cursor: pointer;
   border-radius: 5px;
+  margin: 0;
+  font-size: 0.75rem;
 }
 
-.timeSlider {
+.wrapperTimeSlider {
   position: absolute;
-  bottom: 1rem;
+  bottom: 2rem;
   left: 1rem;
   right: 1rem;
   display: flex;
@@ -230,6 +231,48 @@ dialog::backdrop {
   gap: 0.25rem;
   align-items: center;
   z-index: 10;
+}
+
+.timeSliderBorder {
+  display: block;
+  width: 40%;
+  padding: 0.5rem;
+  padding-right: 0.6rem;
+  border: 1px solid white;
+  max-width: 400px;
+}
+
+.timeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 1px;
+  background: white;
+  border-radius: 4px;
+  outline: none;
+  position: relative;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.timeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  margin-top: -19px; 
+}
+
+.timeSlider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
 }
 
 .conditionsLayout {
@@ -268,7 +311,7 @@ dialog::backdrop {
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
-.eventsOverlay{
+.eventsOverlay {
   height: 100%;
 }
 
