@@ -28,6 +28,7 @@ import {
 } from "recharts";
 
 import { GoogleGenAI } from "@google/genai";
+import { p } from "framer-motion/client";
 type Screen = "location" | "nightSky" | "conditions";
 type ChatButton = {
   label: string;
@@ -59,8 +60,12 @@ function App() {
   const [chatMessage, setChatMessage] = useState<string>("");
   const [weatherData, setWeatherData] = useState<any | null>(null);
   const [sunCalc, setSunCalc] = useState<any>(null);
-  console.log(sunCalc)
-  console.log("time")
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [focusedStarId, setFocusedStarId] = useState<string | null>(null);
+  const [weatherSummary, setWeatherSummary] = useState<string | null>(null);
+
+  console.log(sunCalc);
+  console.log("time");
   useEffect(() => {
     if (!location) {
       setActiveScreen("location");
@@ -124,7 +129,7 @@ function App() {
       });
 
       const filtered = data.filter((star: any) => {
-        return star.mag <= 6.5;
+        return star.mag <= 5.5;
       });
 
       setStarData(filtered);
@@ -143,7 +148,7 @@ function App() {
       const moon = SunCalc.getMoonIllumination(new Date());
 
       setSunCalc({ ...sunTimes, moon });
-      console.log(sunCalc)
+      console.log(sunCalc);
       setWeatherData(data);
     };
 
@@ -394,7 +399,7 @@ User Question: ${userMsg}
       setStarInfo({
         title: starId,
         description: "",
-        extract: `No Wikipedia summary available for ${starId}. Try pressing 'Find out more' to take you to a google search.`,
+        extract: `We couldn't find a Wikipedia summary for ${starId}. Try pressing 'Find out more' to take you to a google search.`,
         url: `https://www.google.com/search?q=${encodeURIComponent(starId)}`,
       });
     } finally {
@@ -480,9 +485,35 @@ User Question: ${userMsg}
     return "Poor";
   }
 
-  const [showCalendar, setShowCalendar] = useState(false);
+  const getWeatherSummary = async (weather: any) => {
+    const prompt = `
+You're summarising a weather data for stargazing to a beginner. 
+On the starting sentence, just say 'Here is the summary for ${cityName}, ${countryName}'
+The weather data is from 7timer, so use their values.
+At the end, give the user a clear time period where stargazing is optimal.
+Keep daytimes in mind.
 
-  const [focusedStarId, setFocusedStarId] = useState<string | null>(null);
+Time now: ${new Date()}
+Weather Data: ${JSON.stringify(weather)}
+`;
+
+    const res = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+
+    return res.text ?? null;
+  };
+
+  useEffect(() => {
+    if (weatherData && cityName && countryName) {
+      (async () => {
+        const summary = await getWeatherSummary(weatherData);
+        setWeatherSummary(summary);
+      })();
+    }
+  }, [weatherData, cityName, countryName]);
+
   return (
     <>
       <AnimatePresence mode="wait">
@@ -569,7 +600,10 @@ User Question: ${userMsg}
                   </p>
                   <button
                     className="buttonScreenChange"
-                    onClick={() => setActiveScreen("conditions")}
+                    onClick={() => {
+                      setActiveScreen("conditions");
+                    }}
+                    disabled={!weatherSummary}
                   >
                     [Find out more]
                   </button>
@@ -771,99 +805,113 @@ User Question: ${userMsg}
                   >
                     Go back
                   </button>
-                  <h2>
-                    Astronomical Conditions for {cityName}, {countryName}
-                  </h2>
-                  <div className="moonSunPanel">
-                    {sunCalc ? (
-                      <div>
-                        <div>
-                          <strong>Sunrise:</strong>{" "}
-                          {sunCalc.sunrise.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div>
-                          <strong>Sunset:</strong>{" "}
-                          {sunCalc.sunset.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div>
-                          <strong>Solar Noon:</strong>{" "}
-                          {sunCalc.solarNoon.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div>
-                          <strong>Dawn:</strong>{" "}
-                          {sunCalc.dawn.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div>
-                          <strong>Dusk:</strong>{" "}
-                          {sunCalc.dusk.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div>
-                          <strong>Moon Illumination:</strong>{" "}
-                          {(sunCalc.moon.fraction * 100).toFixed(1)}%
-                        </div>
-                        <div>
-                          <strong>Moon Phase:</strong>{" "}
-                          {getMoonPhaseName(sunCalc.moon.phase)}
-                        </div>
-                      </div>
-                    ) : (
-                      <div>Loading sun, moon, and sky data...</div>
-                    )}
-                  </div>
-                  {weatherData && (
-                    <div
-                      className="chartDiv"
-                      style={{ width: "100%", marginTop: "1rem" }}
-                    >
-                      {weatherVisualisers.map(({ key, name, color, type }) => (
+                  <div className="weatherContents">
+                    <div className="weatherContentLeft">
+                      <h2>
+                        Astronomical Conditions for {cityName}, {countryName}
+                      </h2>
+                      {weatherSummary === null ? (
+                        <p>Summarising weather...</p>
+                      ) : (
+                        <ReactMarkdown>{weatherSummary}</ReactMarkdown>
+                      )}
+                      {weatherData && (
                         <div
-                          key={key}
-                          style={{
-                            marginBottom: "2rem",
-                            padding: "0.5rem 0",
-                            borderBottom: "1px solid rgba(255,255,255,0.1)",
-                          }}
+                          className="chartDiv"
+                          style={{ width: "100%", marginTop: "1rem" }}
                         >
-                          <h3 className="chartHeading">{name}</h3>
-                          <div style={{ width: "100%", height: 120 }}>
-                            <ResponsiveContainer>
-                              {renderChartByType(
-                                type,
-                                key,
-                                name,
-                                color,
-                                processWeatherData(
-                                  weatherData,
-                                  weatherData.init
-                                )
-                              )}
-                            </ResponsiveContainer>
-                          </div>
-                          <p
-                            style={{
-                              fontSize: "0.85rem",
-                              opacity: 0.7,
-                            }}
-                          ></p>
+                          {weatherVisualisers.map(
+                            ({ key, name, color, type }) => (
+                              <div
+                                key={key}
+                                style={{
+                                  marginBottom: "2rem",
+                                  padding: "0.5rem 0",
+                                  borderBottom:
+                                    "1px solid rgba(255,255,255,0.1)",
+                                }}
+                              >
+                                <h3 className="chartHeading">{name}</h3>
+                                <div style={{ width: "100%", height: 120 }}>
+                                  <ResponsiveContainer>
+                                    {renderChartByType(
+                                      type,
+                                      key,
+                                      name,
+                                      color,
+                                      processWeatherData(
+                                        weatherData,
+                                        weatherData.init
+                                      )
+                                    )}
+                                  </ResponsiveContainer>
+                                </div>
+                                <p
+                                  style={{
+                                    fontSize: "0.85rem",
+                                    opacity: 0.7,
+                                  }}
+                                ></p>
+                              </div>
+                            )
+                          )}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
+                    <div className="weatherContentRight">
+                      <div className="moonSunPanel">
+                        {sunCalc ? (
+                          <div>
+                            <div>
+                              <strong>Sunrise:</strong>{" "}
+                              {sunCalc.sunrise.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                            <div>
+                              <strong>Sunset:</strong>{" "}
+                              {sunCalc.sunset.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                            <div>
+                              <strong>Solar Noon:</strong>{" "}
+                              {sunCalc.solarNoon.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                            <div>
+                              <strong>Dawn:</strong>{" "}
+                              {sunCalc.dawn.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                            <div>
+                              <strong>Dusk:</strong>{" "}
+                              {sunCalc.dusk.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                            <div>
+                              <strong>Moon Illumination:</strong>{" "}
+                              {(sunCalc.moon.fraction * 100).toFixed(1)}%
+                            </div>
+                            <div>
+                              <strong>Moon Phase:</strong>{" "}
+                              {getMoonPhaseName(sunCalc.moon.phase)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div>Loading sun, moon, and sky data...</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

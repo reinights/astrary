@@ -20,7 +20,6 @@ dialog::backdrop {
   overflow: hidden;
 }
 
-
 .overlay {
   opacity: 0.5;
   transition: opacity 0.3s ease;
@@ -263,7 +262,7 @@ dialog::backdrop {
   border-radius: 50%;
   background: white;
   cursor: pointer;
-  margin-top: -19px; 
+  margin-top: -19px;
 }
 
 .timeSlider::-moz-range-thumb {
@@ -380,6 +379,22 @@ iframe {
   border: none;
 }
 
+.weatherContents {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.weatherContentRight {
+  width: 100%;
+}
+
+.moonSunPanel {
+  border: 1px solid white;
+  width: 90%;
+  flex-grow: 1;
+  padding: 1em;
+}
 @media (min-width: 768px) {
   .conditionsLayout {
     flex-direction: row;
@@ -420,5 +435,26 @@ iframe {
     max-width: 600px;
     height: 90%;
     max-height: 80vh;
+  }
+
+  .weatherContents {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    gap: 2em;
+    align-items: baseline;
+  }
+  .weatherContentLeft {
+    width: 70%;
+  }
+  .weatherContentRight {
+    width: 30%;
+  }
+  .moonSunPanel {
+    width: 90%;
+  }
+  .moonSunPanel {
+    max-width: 400px;
   }
 }
