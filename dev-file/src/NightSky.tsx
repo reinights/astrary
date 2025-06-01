@@ -1,9 +1,10 @@
-import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import { Canvas, useThree, useLoader } from "@react-three/fiber";
 import { OrbitControls, Cloud, CameraControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { useMemo, useRef, useEffect, useState } from "react";
 // @ts-ignore
 import { julian } from "astronomia";
+import SunCalc from "suncalc";
 //ChatGPT Help with shaders and converting values from ra/dec/mag to xyza.
 //Conversation Link:
 //https://chatgpt.com/share/67ffd32e-c694-8009-b8fb-27b7b4ebda98
@@ -309,6 +310,27 @@ export default function NightSky({
     setFocusedStarId(null);
   }, [focusedStarId]);
 
+  function getMoonTextureIndex(phase: number): number {
+    if (phase < 0.03 || phase > 0.97) return 0;
+    if (phase < 0.22) return 1;
+    if (phase < 0.28) return 2;
+    if (phase < 0.47) return 3;
+    if (phase < 0.53) return 4;
+    if (phase < 0.72) return 5;
+    if (phase < 0.78) return 6;
+    return 7;
+  }
+  const moonIllum = SunCalc.getMoonIllumination(time);
+  const moonIndex = getMoonTextureIndex(moonIllum.phase);
+  const moonTexture = useLoader(THREE.TextureLoader, `/moon_${moonIndex}.svg`);
+  const moonPos = SunCalc.getMoonPosition(time, lat, lng); 
+  const radius = 100;
+  //borrowed from above :D
+  const moonX =
+    radius * Math.cos(moonPos.altitude) * Math.sin(-moonPos.azimuth);
+  const moonY = radius * Math.sin(moonPos.altitude);
+  const moonZ =
+    radius * Math.cos(moonPos.altitude) * Math.cos(-moonPos.azimuth);
   return (
     <>
       <Canvas
@@ -322,6 +344,9 @@ export default function NightSky({
           starMap={starMap}
           onStarClick={onStarClick}
         />
+        <sprite position={[moonX, moonY, moonZ]} scale={[5, 5, 1]}>
+          <spriteMaterial map={moonTexture} transparent />
+        </sprite>
 
         <mesh position={[0, -1.5, 0]} rotation={[Math.PI, 0, 0]}>
           <sphereGeometry
@@ -347,16 +372,24 @@ export default function NightSky({
         />
 
         <Html position={[0, -3, -10]} center>
-          <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>N</div>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
+            N
+          </div>
         </Html>
         <Html position={[10, -3, 0]} center>
-          <div style={{ color: "white", fontSize: "16px", opacity: 0.5  }}>E</div>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
+            E
+          </div>
         </Html>
         <Html position={[0, -3, 10]} center>
-          <div style={{ color: "white", fontSize: "16px", opacity: 0.5  }}>S</div>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
+            S
+          </div>
         </Html>
         <Html position={[-10, -3, 0]} center>
-          <div style={{ color: "white", fontSize: "16px", opacity: 0.5  }}>W</div>
+          <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
+            W
+          </div>
         </Html>
       </Canvas>
     </>

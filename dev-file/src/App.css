@@ -385,14 +385,14 @@ iframe {
   width: 100%;
 }
 
-.weatherContentRight {
-  width: 100%;
+.weatherSummary{
+  display: flex;
+  flex-direction: column;
+  gap: 2em
 }
 
 .moonSunPanel {
   border: 1px solid white;
-  width: 90%;
-  flex-grow: 1;
   padding: 1em;
 }
 @media (min-width: 768px) {
@@ -412,6 +412,12 @@ iframe {
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     overflow-y: auto;
   }
+
+  .weatherSummary{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
 }
 
 @media (min-width: 1080px) {
