@@ -3,7 +3,7 @@ import { OrbitControls, Cloud, CameraControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { useMemo, useRef, useEffect, useState } from "react";
 // @ts-ignore
-import { julian } from "astronomia";
+import { julian, moonposition } from "astronomia";
 import SunCalc from "suncalc";
 //ChatGPT Help with shaders and converting values from ra/dec/mag to xyza.
 //Conversation Link:
@@ -323,14 +323,34 @@ export default function NightSky({
   const moonIllum = SunCalc.getMoonIllumination(time);
   const moonIndex = getMoonTextureIndex(moonIllum.phase);
   const moonTexture = useLoader(THREE.TextureLoader, `/moon_${moonIndex}.svg`);
-  const moonPos = SunCalc.getMoonPosition(time, lat, lng); 
-  const radius = 100;
-  //borrowed from above :D
-  const moonX =
-    radius * Math.cos(moonPos.altitude) * Math.sin(-moonPos.azimuth);
-  const moonY = radius * Math.sin(moonPos.altitude);
-  const moonZ =
-    radius * Math.cos(moonPos.altitude) * Math.cos(-moonPos.azimuth);
+
+  const jd = getJulianDateFromDate(time);
+  const moonCoords = moonposition.position(jd);
+
+  const moonRaRad = moonCoords.ra;
+  const moonDecRad = moonCoords.dec;
+
+  //convert moon RA/Dec to Alt/Az
+  const gst = getGreenwichSiderealTimeRadians(jd);
+  const lst = gst + (lng * Math.PI) / 180;
+  const ha = lst - moonRaRad;
+
+  const latRad = (lat * Math.PI) / 180;
+  const sinAlt =
+    Math.sin(moonDecRad) * Math.sin(latRad) +
+    Math.cos(moonDecRad) * Math.cos(latRad) * Math.cos(ha);
+  const alt = Math.asin(sinAlt);
+
+  const cosAz =
+    (Math.sin(moonDecRad) - Math.sin(alt) * Math.sin(latRad)) /
+    (Math.cos(alt) * Math.cos(latRad));
+  let az = Math.acos(Math.min(Math.max(cosAz, -1), 1));
+  if (Math.sin(ha) > 0) az = 2 * Math.PI - az;
+
+  const moonX = 100 * Math.cos(alt) * Math.sin(-az);
+  const moonY = 100 * Math.sin(alt);
+  const moonZ = 100 * Math.cos(alt) * Math.cos(-az);
+
   return (
     <>
       <Canvas
@@ -344,7 +364,7 @@ export default function NightSky({
           starMap={starMap}
           onStarClick={onStarClick}
         />
-        <sprite position={[moonX, moonY, moonZ]} scale={[5, 5, 1]}>
+        <sprite position={[moonX, moonY, moonZ]} scale={[3, 3, 1]}>
           <spriteMaterial map={moonTexture} transparent />
         </sprite>
 
@@ -373,22 +393,22 @@ export default function NightSky({
 
         <Html position={[0, -3, -10]} center>
           <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
-            N
+            S
           </div>
         </Html>
         <Html position={[10, -3, 0]} center>
           <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
-            E
+            W
           </div>
         </Html>
         <Html position={[0, -3, 10]} center>
           <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
-            S
+            N
           </div>
         </Html>
         <Html position={[-10, -3, 0]} center>
           <div style={{ color: "white", fontSize: "16px", opacity: 0.5 }}>
-            W
+            E
           </div>
         </Html>
       </Canvas>

@@ -55,14 +55,14 @@ function App() {
   const [countryName, setCountryName] = useState<string | null>(null);
   const [starData, setStarData] = useState<any[]>([]);
   const [skyTime, setSkyTime] = useState<Date>(new Date());
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([{sender: "bot", text: "Hey there! My name is AstraBot and I can answer your stargazing questions! Remember, I am a chatbot and might make mistakes!"}]);
   const [chatMessage, setChatMessage] = useState<string>("");
   const [weatherData, setWeatherData] = useState<any | null>(null);
   const [sunCalc, setSunCalc] = useState<any>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [focusedStarId, setFocusedStarId] = useState<string | null>(null);
   const [weatherSummary, setWeatherSummary] = useState<string | null>(null);
-
+  console.log(messages)
   console.log(sunCalc);
   console.log("time");
   useEffect(() => {
@@ -201,16 +201,19 @@ function App() {
       .slice(-6)
       .map((m) => `${m.sender === "user" ? "User" : "Bot"}: ${m.text}`)
       .join("\n");
+
+    const formattedForecast = formatWeatherForecast(weatherData);
+
     try {
       const prompt = `
-You're an astronomy chatbot for a night sky app using Three.js.
+You're an astronomy chatbot named AstraBot for a night sky app using Three.js.
 
 Any time you mention specific stars in your response, you must also return them as interactive buttons.
 This button will be used so that the camera will focus on the star.
 If you mention any stars, describe why briefly.
 Match the tone of the user.
 
-Respond in strict JSON (markdown) using this format, and for the target. STRICTLY USE HIP IDENTIFIER.:
+Respond in strict JSON (markdown) with the back ticks using this format, and for the target. STRICTLY USE HIP IDENTIFIER.:
 
 {
   "needs_buttons": true,
@@ -237,7 +240,7 @@ Context so far:
 ${contextString}
 
 
-Weather Conditions from 7timer: ${weatherData}
+Weather Conditions from 7timer: ${formattedForecast}
 Times Data: ${sunCalc}
 Always keep both of these data in mind.
 
