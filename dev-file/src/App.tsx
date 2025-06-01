@@ -55,16 +55,33 @@ function App() {
   const [countryName, setCountryName] = useState<string | null>(null);
   const [starData, setStarData] = useState<any[]>([]);
   const [skyTime, setSkyTime] = useState<Date>(new Date());
-  const [messages, setMessages] = useState<Message[]>([{sender: "bot", text: "Hey there! My name is AstraBot and I can answer your stargazing questions! Remember, I am a chatbot and might make mistakes!"}]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      sender: "bot",
+      text: "Hey there! My name is AstraBot and I can answer your stargazing questions! Remember, I am a chatbot and might make mistakes!",
+    },
+  ]);
   const [chatMessage, setChatMessage] = useState<string>("");
   const [weatherData, setWeatherData] = useState<any | null>(null);
   const [sunCalc, setSunCalc] = useState<any>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [focusedStarId, setFocusedStarId] = useState<string | null>(null);
   const [weatherSummary, setWeatherSummary] = useState<string | null>(null);
-  console.log(messages)
+  console.log(messages);
   console.log(sunCalc);
   console.log("time");
+
+  useEffect(() => {
+    const storedLocation = localStorage.getItem("userLocation");
+
+    if (!storedLocation) {
+      setActiveScreen("location");
+      return;
+    }
+
+    setLocation(JSON.parse(storedLocation));
+  }, []);
+
   useEffect(() => {
     if (!location) {
       setActiveScreen("location");
