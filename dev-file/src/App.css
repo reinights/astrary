@@ -12,6 +12,11 @@ dialog::backdrop {
   background-color: rgba(0, 0, 0, 0.8);
 }
 
+iframe {
+  height: 100%;
+  border: none;
+}
+
 .screen {
   display: flex;
   width: 100vw;
@@ -374,10 +379,6 @@ dialog::backdrop {
   z-index: 1000;
 }
 
-iframe {
-  height: 100%;
-  border: none;
-}
 
 .weatherContents {
   display: flex;
@@ -395,6 +396,7 @@ iframe {
   border: 1px solid white;
   padding: 1em;
 }
+
 @media (min-width: 768px) {
   .conditionsLayout {
     flex-direction: row;
@@ -451,12 +453,7 @@ iframe {
     gap: 2em;
     align-items: baseline;
   }
-  .weatherContentLeft {
-    width: 70%;
-  }
-  .weatherContentRight {
-    width: 30%;
-  }
+  
   .moonSunPanel {
     width: 90%;
   }

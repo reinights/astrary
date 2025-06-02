@@ -1,7 +1,7 @@
 //Currently using Prettier for code formatting: https://prettier.io/docs/
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, transform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 import LocationPicker from "./LocationPicker";
 import NightSky from "./NightSky";
@@ -21,7 +21,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   Area,
   AreaChart,
   BarChart,
@@ -39,6 +38,8 @@ type Message = {
   text: string;
   buttons?: ChatButton[];
 };
+
+//recharts values.
 const weatherVisualisers = [
   { key: "temp", name: "Temperature (°C)", color: "#ff7300", type: "line" },
   { key: "seeing", name: "Seeing", color: "#82ca9d", type: "area" },
@@ -67,10 +68,8 @@ function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [focusedStarId, setFocusedStarId] = useState<string | null>(null);
   const [weatherSummary, setWeatherSummary] = useState<string | null>(null);
-  console.log(messages);
-  console.log(sunCalc);
-  console.log("time");
 
+  //checks the browser cookies for the location
   useEffect(() => {
     const storedLocation = localStorage.getItem("userLocation");
 
@@ -82,6 +81,9 @@ function App() {
     setLocation(JSON.parse(storedLocation));
   }, []);
 
+  /*---------------------------------    Value Initialisations    -------------------------------------*/
+
+  //fetches the stars, location name, and the weather forecast.
   useEffect(() => {
     if (!location) {
       setActiveScreen("location");
@@ -106,8 +108,6 @@ function App() {
         lat: number;
         lng: number;
       }[];
-
-      console.log(cities);
 
       let nearest = null;
 
@@ -166,7 +166,6 @@ function App() {
       const moon = SunCalc.getMoonIllumination(new Date());
 
       setSunCalc({ ...sunTimes, moon });
-      console.log(sunCalc);
       setWeatherData(data);
     };
 
@@ -178,6 +177,7 @@ function App() {
     setActiveScreen("nightSky");
   }, [location]);
 
+  //browser geolocation API
   const getLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -200,25 +200,28 @@ function App() {
 
   const handleLocationSelect = (coords: Coordinates) => {
     localStorage.setItem("userLocation", JSON.stringify(coords));
-    console.log(coords);
     setLocation(coords);
   };
 
+  /*---------------------------------    Chatbot   -------------------------------------*/
+
   const [botLoading, setBotLoading] = useState<boolean>(false);
   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API });
-  console.log(messages);
   const handleSendMessage = async () => {
     const userMsg = chatMessage.trim();
     if (!userMsg) return;
     setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
     setChatMessage("");
     setBotLoading(true);
-    //
+    //takes the past 6 messages (user, and the bot) and formats it as such:
+    //User: Yo. Hook me up?
+    //Bot: Sure boss. Here's the stars.
     const contextString = messages
       .slice(-6)
       .map((m) => `${m.sender === "user" ? "User" : "Bot"}: ${m.text}`)
       .join("\n");
 
+    //Makes the context for weather readable for context.
     const formattedForecast = formatWeatherForecast(weatherData);
 
     try {
@@ -271,7 +274,6 @@ User Question: ${userMsg}
         contents: prompt,
       });
 
-      console.log(res);
       const responseText = res.text ?? "{}"; //fallback
 
       // When sending that response, gemini reacts with using ```json [contents]```.
@@ -280,8 +282,8 @@ User Question: ${userMsg}
       if (cleanedResponse.startsWith("```json")) {
         //:DDDD I love regex! :DD
         cleanedResponse = cleanedResponse
-          .replace(/^```json\s*/, "") //replaces the starting line
-          .replace(/\s*```$/, ""); //replaces the ending line
+          .replace(/^```json\s*/, "") //replaces the starting line with empty (deleting it)
+          .replace(/\s*```$/, ""); //replaces the ending line with empty
       } else if (cleanedResponse.startsWith("```")) {
         cleanedResponse = cleanedResponse
           .replace(/^```\s*/, "")
@@ -293,7 +295,6 @@ User Question: ${userMsg}
       try {
         //I'm practically betting that the bot will actually pump out decent responses :sob:
         parsed = JSON.parse(cleanedResponse);
-        console.log(parsed);
       } catch (err) {
         setMessages((prev) => [
           ...prev,
@@ -334,9 +335,43 @@ User Question: ${userMsg}
       ]);
     } finally {
       setBotLoading(false);
-      console.log(messages);
     }
   };
+
+  function formatWeatherForecast(weather: any): string {
+    //how 7timer forecasts works, is there's a init value which is something like "2025053106"
+    //And each timepoint is every three hours. ;(
+
+    const init = weather.init;
+    const year = parseInt(init.slice(0, 4), 10);
+    const month = parseInt(init.slice(4, 6), 10) - 1; //js months are 0 based
+    const day = parseInt(init.slice(6, 8), 10);
+    const hour = parseInt(init.slice(8, 10), 10);
+    const initDate = new Date(Date.UTC(year, month, day, hour));
+
+    return weather.dataseries
+      .slice(0, 15)
+      .map((entry: any) => {
+        const forecastDate = new Date(
+          initDate.getTime() + entry.timepoint * 60 * 60 * 1000
+        );
+
+        //surely this will work :thumbs_up:
+        const forecastTimeStr =
+          forecastDate.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+
+        return `Forecast at (${forecastTimeStr}):
+- Cloud Cover: ${entry.cloudcover} (1–9)
+- Seeing: ${entry.seeing} (1–8)
+- Transparency: ${entry.transparency} (1–8)
+- Lifted Index: ${entry.lifted_index}
+- 2m Temperature: ${entry.temp2m}°C
+- 2m Relative Humidity: ${entry.rh2m}
+- Precipitation Type: ${entry.prec_type ?? "none"}
+`;
+      })
+      .join("\n");
+  }
 
   function getMoonPhaseName(phase: number): string {
     if (phase < 0.03 || phase > 0.97) return "New Moon";
@@ -377,6 +412,7 @@ User Question: ${userMsg}
         return delta <= 24 * 60 * 60 * 1000; // only next 24 hours
       });
   };
+  /*---------------------------------    Star Information Panel   -------------------------------------*/
 
   //for the info when clicking. It uses wikipedia.
   const [selectedStarId, setSelectedStarId] = useState<string | null>(null);
@@ -390,7 +426,6 @@ User Question: ${userMsg}
 
   useEffect(() => {
     if (selectedStarId) {
-      console.log("You clicked on star:", selectedStarId);
       searchStar(selectedStarId);
     }
   }, [selectedStarId]);
@@ -431,7 +466,8 @@ User Question: ${userMsg}
     }
   };
 
-  //initial dialogue.
+  /*---------------------------------    Initial Dialog   -------------------------------------*/
+
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const initialDialog = localStorage.getItem("initialDialog");
@@ -443,6 +479,9 @@ User Question: ${userMsg}
     dialogRef.current?.close();
     localStorage.setItem("initialDialog", "true");
   };
+
+  /*---------------------------------    Scoring The Weather   -------------------------------------*/
+
   function rateConditions(data: any, sunCalc: any, time: Date): string {
     //daytime
     if (sunCalc.sunrise && sunCalc.sunset) {
@@ -457,6 +496,7 @@ User Question: ${userMsg}
     const hour = parseInt(init.slice(8, 10));
     const initDate = new Date(year, month, day, hour);
 
+    //finding out the time from the weather forecast.
     let closest = null;
     let minDiff = Infinity;
 
@@ -474,6 +514,8 @@ User Question: ${userMsg}
     if (!closest) return "No matching weather data";
     let score = 0;
 
+
+    //These are mostly opionionated and probably is wrong 90% of the time :D
     //cloud cover
     if (data.cloudcover <= 2) score += 2;
     else if (data.cloudcover <= 5) score += 1;
@@ -506,8 +548,9 @@ User Question: ${userMsg}
     return "Poor";
   }
 
+  /*---------------------------------    Generating the Weather Summary   -------------------------------------*/
+
   const getWeatherSummary = async (weather: any) => {
-    console.log(weather);
     const formattedForecast = formatWeatherForecast(weather);
 
     const prompt = `
@@ -542,44 +585,10 @@ With this format: **Best Stargazing Time:**
       contents: prompt,
     });
 
-    console.log(formattedForecast);
-
     return res.text ?? null;
   };
 
-  function formatWeatherForecast(weather: any): string {
-    //how 7timer forecasts works, is there's a init value which is something like "2025053106"
-    //And each timepoint is every three hours. ;(
-
-    const init = weather.init;
-    const year = parseInt(init.slice(0, 4), 10);
-    const month = parseInt(init.slice(4, 6), 10) - 1; //js months are 0 based
-    const day = parseInt(init.slice(6, 8), 10);
-    const hour = parseInt(init.slice(8, 10), 10);
-    const initDate = new Date(Date.UTC(year, month, day, hour));
-
-    return weather.dataseries
-      .slice(0, 15)
-      .map((entry: any) => {
-        const forecastDate = new Date(
-          initDate.getTime() + entry.timepoint * 60 * 60 * 1000
-        );
-        const forecastTimeStr =
-          forecastDate.toISOString().replace("T", " ").slice(0, 16) + " UTC";
-
-        return `Forecast at (${forecastTimeStr}):
-- Cloud Cover: ${entry.cloudcover} (1–9)
-- Seeing: ${entry.seeing} (1–8)
-- Transparency: ${entry.transparency} (1–8)
-- Lifted Index: ${entry.lifted_index}
-- 2m Temperature: ${entry.temp2m}°C
-- 2m Relative Humidity: ${entry.rh2m}
-- Precipitation Type: ${entry.prec_type ?? "none"}
-`;
-      })
-      .join("\n");
-  }
-
+  //waits until the data is prepared for the summary data :D
   useEffect(() => {
     if (weatherData && cityName && countryName) {
       (async () => {
@@ -591,6 +600,7 @@ With this format: **Best Stargazing Time:**
 
   return (
     <>
+      {/*---------------------------------   Wrapped for the transitions   -------------------------------------*/}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeScreen}
@@ -612,6 +622,9 @@ With this format: **Best Stargazing Time:**
               </button>
             </form>
           </dialog>
+
+          {/*---------------------------------   Location Screen   -------------------------------------*/}
+
           {activeScreen === "location" && (
             <div className="locationScreen">
               <button onClick={getLocation} className="locationBtn">
@@ -622,8 +635,13 @@ With this format: **Best Stargazing Time:**
             </div>
           )}
 
+          {/*---------------------------------   Night Sky Screen   -------------------------------------*/}
+
           {activeScreen === "nightSky" && (
             <main className="screen">
+
+              {/*---------------------------------   Information Panel  -------------------------------------*/}
+
               <AnimatePresence>
                 {showStarInfo && starInfo && (
                   <motion.div
@@ -653,6 +671,8 @@ With this format: **Best Stargazing Time:**
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/*---------------------------------   Stargazing Score and Location Toggles  -------------------------------------*/}
 
               <div className="locationInfo">
                 <div className="overlay">
@@ -684,7 +704,10 @@ With this format: **Best Stargazing Time:**
                   </button>
                 </div>
               </div>
+
               <div className="bottomRow">
+                {/*---------------------------------   Chatbot Toggle Button  -------------------------------------*/}
+
                 {!isOpen && !showStarInfo && !showCalendar && (
                   <button
                     className="chatToggle overlay"
@@ -701,6 +724,8 @@ With this format: **Best Stargazing Time:**
                     </svg>
                   </button>
                 )}
+
+                {/*---------------------------------   Time Slider  -------------------------------------*/}
 
                 {!isOpen && !showStarInfo && !showCalendar && (
                   <div className="overlay wrapperTimeSlider">
@@ -733,6 +758,8 @@ With this format: **Best Stargazing Time:**
                   </div>
                 )}
 
+                {/*---------------------------------   Events Toggle Button   -------------------------------------*/}
+
                 {!isOpen && !showStarInfo && !showCalendar && (
                   <button
                     className="calendarToggle overlay"
@@ -763,6 +790,9 @@ With this format: **Best Stargazing Time:**
                   </button>
                 )}
               </div>
+
+              {/*---------------------------------   Chatbot Panel   -------------------------------------*/}
+
               <div className={`chatbot ${isOpen ? "open" : ""}`}>
                 <div className="chatHeader">
                   <p className="chatbotHeader">AstraBot</p>
@@ -804,24 +834,30 @@ With this format: **Best Stargazing Time:**
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.5, ease: "easeInOut" }}
                       >
-                        <span>Astrary is thinking...</span>
+                        <span>AstraBot is thinking...</span>
                       </motion.div>
                     )}
                   </div>
-                  <div className="chatInput">
-                    <input
-                      type="text"
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && chatMessage.trim()) {
-                          handleSendMessage();
-                        }
-                      }}
-                    />
-                  </div>
+
+                  {!botLoading && (
+                    <div className="chatInput">
+                      <input
+                        type="text"
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && chatMessage.trim()) {
+                            handleSendMessage();
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/*---------------------------------   Events Calendar Panel  -------------------------------------*/}
+
               {showCalendar && (
                 <motion.div
                   className="eventsOverlay"
@@ -852,6 +888,8 @@ With this format: **Best Stargazing Time:**
                 </motion.div>
               )}
 
+              {/*---------------------------------   Star Field   -------------------------------------*/}
+
               <div id="nightSky">
                 {location && (
                   <div id="nightSky">
@@ -870,8 +908,12 @@ With this format: **Best Stargazing Time:**
             </main>
           )}
 
+          {/*---------------------------------   Conditions Screen   -------------------------------------*/}
+
           {activeScreen === "conditions" && (
             <div key="weatherScreen" className="screen">
+              {/*---------------------------------   Summary   -------------------------------------*/}
+
               <div className="conditionsLayout">
                 <div className="weatherPanel">
                   <button
@@ -891,6 +933,8 @@ With this format: **Best Stargazing Time:**
                         <ReactMarkdown>{weatherSummary}</ReactMarkdown>
                       )}
                     </div>
+
+                    {/*---------------------------------   Time Panel   -------------------------------------*/}
 
                     <div className="moonSunPanel">
                       {sunCalc ? (
@@ -944,6 +988,9 @@ With this format: **Best Stargazing Time:**
                       )}
                     </div>
                   </div>
+
+                  {/*---------------------------------   Charts   -------------------------------------*/}
+
                   {weatherData && (
                     <div
                       className="chartDiv"
