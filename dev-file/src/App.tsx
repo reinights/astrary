@@ -453,7 +453,7 @@ User Question: ${userMsg}
     //finding out the time from the weather forecast.
     let closest = null;
     let minDiff = Infinity;
-
+    data = data;
     for (const entry of weatherData.dataseries) {
       const entryTime = new Date(
         initDate.getTime() + entry.timepoint * 60 * 60 * 1000,
