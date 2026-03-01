@@ -26,8 +26,7 @@ import {
   BarChart,
 } from "recharts";
 
-import { GoogleGenAI } from "@google/genai";
-type Screen = "location" | "nightSky" | "conditions";
+import Groq from "groq-sdk";
 type ChatButton = {
   label: string;
   target: string;
@@ -47,12 +46,17 @@ const weatherVisualisers = [
   { key: "cloudcover", name: "Cloud Cover", color: "#8884d8", type: "bar" },
 ];
 
+const groq = new Groq({
+  apiKey: import.meta.env.VITE_GROQ_API,
+  dangerouslyAllowBrowser: true,
+});
+type Screen = "location" | "nightSky" | "conditions";
+
 function App() {
   const [activeScreen, setActiveScreen] = useState<Screen>("location");
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [cityName, setCityName] = useState<string | null>(null);
   const [countryName, setCountryName] = useState<string | null>(null);
   const [starData, setStarData] = useState<any[]>([]);
   const [skyTime, setSkyTime] = useState<Date>(new Date());
@@ -90,51 +94,14 @@ function App() {
       return;
     }
 
-    const fetchCityInfo = async () => {
+    const fetchCountryInfo = async () => {
       if (!location) return;
-
-      const response = await fetch("/cities_rows.csv");
-      const csvText = await response.text();
-
-      const parsed = Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-      });
-
-      //the as is for typescript.
-      const cities = parsed.data as {
-        city: string;
-        country: string;
-        lat: number;
-        lng: number;
-      }[];
-
-      let nearest = null;
-
-      //stores the current smallest distance, gets replaced if it finds a smaller one
-      let minDistance = Infinity;
-
-      for (const city of cities) {
-        //essentially pythagoras, but we don't need to sqrt as we're only doing comparisons.
-        const distance =
-          Math.pow(city.lat - location.lat, 2) +
-          Math.pow(city.lng - location.lng, 2);
-
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearest = city;
-        }
-      }
-
-      if (nearest) {
-        setCityName(nearest.city);
-        setCountryName(nearest.country);
-      } else {
-        setCityName(null);
-        setCountryName(null);
-      }
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lng}&format=json`,
+      );
+      const data = await res.json();
+      setCountryName(data.address.country ?? null);
     };
-
     //trimmed hipporacus is 5.2 mb with 100000 items, should be better than using an public database.
     const fetchStars = async () => {
       const res = await fetch("/stars.csv");
@@ -157,7 +124,7 @@ function App() {
       if (!location) return;
 
       const res = await fetch(
-        `https://www.7timer.info/bin/api.pl?lon=${location.lng}&lat=${location.lat}&product=astro&output=json`
+        `https://www.7timer.info/bin/api.pl?lon=${location.lng}&lat=${location.lat}&product=astro&output=json`,
       );
       const data = await res.json();
 
@@ -170,7 +137,7 @@ function App() {
     };
 
     setIsLoading(true);
-    fetchCityInfo();
+    fetchCountryInfo();
     fetchStars();
     fetchWeather();
     setIsLoading(false);
@@ -191,7 +158,7 @@ function App() {
         },
         () => {
           alert("Could not get location. Please use the map.");
-        }
+        },
       );
     } else {
       alert("Geolocation is not supported in this browser.");
@@ -206,16 +173,13 @@ function App() {
   /*---------------------------------    Chatbot   -------------------------------------*/
 
   const [botLoading, setBotLoading] = useState<boolean>(false);
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API });
-  const handleSendMessage = async () => {
-    const userMsg = chatMessage.trim();
+  const handleSendMessage = async (overrideMessage?: string) => {
+    const userMsg = (overrideMessage ?? chatMessage).trim();
     if (!userMsg) return;
     setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
     setChatMessage("");
     setBotLoading(true);
-    //takes the past 6 messages (user, and the bot) and formats it as such:
-    //User: Yo. Hook me up?
-    //Bot: Sure boss. Here's the stars.
+
     const contextString = messages
       .slice(-6)
       .map((m) => `${m.sender === "user" ? "User" : "Bot"}: ${m.text}`)
@@ -233,19 +197,14 @@ This button will be used so that the camera will focus on the star.
 If you mention any stars, describe why briefly.
 Match the tone of the user.
 
-Respond in strict JSON (markdown) with the back ticks using this format, and for the target. STRICTLY USE HIP IDENTIFIER.:
+Respond in strict JSON only. No markdown, no newlines inside string values, no bullet points inside the description field. Use \\n for line breaks if needed.
 
-{
-  "needs_buttons": true,
-  "description": "Your response here using **bold** and *italics* and bullet points",
-  "buttons": [
-    {
-      "label": "Sirius",
-      "target": "HIP 32349"
-    }
-  ]
-}
+Example of VALID response:
+{"needs_buttons":true,"description":"Some text here. More text here.","buttons":[{"label":"Sirius","target":"Sirius"}]}
 
+Example of INVALID response (do not do this):
+{"needs_buttons":true,"description":"Some text here.
+* bullet point","buttons":[]}
 If no stars are mentioned, just respond with:
 
 {
@@ -253,7 +212,7 @@ If no stars are mentioned, just respond with:
   "description": "Your response with markdown formatting"
 }
 
-Location: ${cityName}, ${countryName} 
+Country: ${countryName} 
 Date: ${new Date()}
 Style: Short, casual, friendly. Use markdown formatting like **bold**, *italics*, and bullet points (- item).
 Context so far: 
@@ -269,43 +228,31 @@ Dismiss unrelated to astronomy questions.
 User Question: ${userMsg}
 `;
 
-      const res = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: prompt,
+      const res = await groq.chat.completions.create({
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompt }],
       });
-
-      const responseText = res.text ?? "{}"; //fallback
+      const responseText = res.choices[0]?.message?.content ?? "{}";
 
       // When sending that response, gemini reacts with using ```json [contents]```.
       // It's ok for markdown, but I cannot parse the buttons, so we need to get rid of it.
       let cleanedResponse = responseText.trim();
-      if (cleanedResponse.startsWith("```json")) {
-        //:DDDD I love regex! :DD
-        cleanedResponse = cleanedResponse
-          .replace(/^```json\s*/, "") //replaces the starting line with empty (deleting it)
-          .replace(/\s*```$/, ""); //replaces the ending line with empty
-      } else if (cleanedResponse.startsWith("```")) {
-        cleanedResponse = cleanedResponse
-          .replace(/^```\s*/, "")
-          .replace(/\s*```$/, "");
-      }
+
+      // strip code fences
+      cleanedResponse = cleanedResponse
+        .replace(/^```(?:json)?\s*/, "")
+        .replace(/\s*```$/, "");
+
+      // extract just the JSON object in case there's garbage around it
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
 
       let parsed;
-      //this block checks if the parsing is valid
       try {
-        //I'm practically betting that the bot will actually pump out decent responses :sob:
-        parsed = JSON.parse(cleanedResponse);
+        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleanedResponse);
       } catch (err) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "bot",
-            text: responseText,
-          },
-        ]);
+        setMessages((prev) => [...prev, { sender: "bot", text: responseText }]);
         return;
       }
-
       if (parsed.needs_buttons) {
         setMessages((prev) => [
           ...prev,
@@ -350,10 +297,10 @@ User Question: ${userMsg}
     const initDate = new Date(Date.UTC(year, month, day, hour));
 
     return weather.dataseries
-      .slice(0, 15)
+      .slice(0, 8)
       .map((entry: any) => {
         const forecastDate = new Date(
-          initDate.getTime() + entry.timepoint * 60 * 60 * 1000
+          initDate.getTime() + entry.timepoint * 60 * 60 * 1000,
         );
 
         //surely this will work :thumbs_up:
@@ -374,16 +321,17 @@ User Question: ${userMsg}
   }
 
   function getMoonPhaseName(phase: number): string {
-    if (phase < 0.03 || phase > 0.97) return "New Moon";
-    if (phase < 0.22) return "Waxing Crescent";
-    if (phase < 0.28) return "First Quarter";
-    if (phase < 0.47) return "Waxing Gibbous";
-    if (phase < 0.53) return "Full Moon";
-    if (phase < 0.72) return "Waning Gibbous";
-    if (phase < 0.78) return "Last Quarter";
+    const p = ((phase % 1) + 1) % 1;
+
+    if (p < 0.03 || p > 0.97) return "New Moon";
+    if (p < 0.22) return "Waxing Crescent";
+    if (p < 0.28) return "First Quarter";
+    if (p < 0.47) return "Waxing Gibbous";
+    if (p < 0.53) return "Full Moon";
+    if (p < 0.72) return "Waning Gibbous";
+    if (p < 0.78) return "Last Quarter";
     return "Waning Crescent";
   }
-
   //processes the data got from 7timer
   const processWeatherData = (weatherData: any, init: string) => {
     const year = parseInt(init.slice(0, 4));
@@ -396,7 +344,7 @@ User Question: ${userMsg}
     return weatherData.dataseries
       .map((entry: any) => {
         const time = new Date(
-          initDate.getTime() + entry.timepoint * 60 * 60 * 1000
+          initDate.getTime() + entry.timepoint * 60 * 60 * 1000,
         );
 
         return {
@@ -413,6 +361,12 @@ User Question: ${userMsg}
       });
   };
   /*---------------------------------    Star Information Panel   -------------------------------------*/
+
+  const findStarByName = (name: string) => {
+    const lower = name.toLowerCase();
+    const star = starData.find((s: any) => s.proper?.toLowerCase() === lower);
+    return star ? `HIP ${star.hip}` : null;
+  };
 
   //for the info when clicking. It uses wikipedia.
   const [selectedStarId, setSelectedStarId] = useState<string | null>(null);
@@ -434,8 +388,8 @@ User Question: ${userMsg}
       //wiki fetch.
       const wikiRes = await fetch(
         `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
-          starId
-        )}`
+          starId,
+        )}`,
       );
 
       if (!wikiRes.ok) {
@@ -502,7 +456,7 @@ User Question: ${userMsg}
 
     for (const entry of weatherData.dataseries) {
       const entryTime = new Date(
-        initDate.getTime() + entry.timepoint * 60 * 60 * 1000
+        initDate.getTime() + entry.timepoint * 60 * 60 * 1000,
       );
       const diff = Math.abs(entryTime.getTime() - time.getTime());
       if (diff < minDiff) {
@@ -511,30 +465,21 @@ User Question: ${userMsg}
       }
     }
 
+    //These are mostly opionionated and probably is wrong 90% of the time :D
     if (!closest) return "No matching weather data";
     let score = 0;
 
+    if (closest.cloudcover <= 2) score += 2;
+    else if (closest.cloudcover <= 5) score += 1;
+    else if (closest.cloudcover > 7) score -= 1;
 
-    //These are mostly opionionated and probably is wrong 90% of the time :D
-    //cloud cover
-    if (data.cloudcover <= 2) score += 2;
-    else if (data.cloudcover <= 5) score += 1;
-    else if (data.cloudcover <= 7) score += 0;
-    else score -= 1;
+    if (closest.seeing >= 5) score += 2;
+    else if (closest.seeing >= 3) score += 1;
 
-    //seeing
-    if (data.seeing >= 5) score += 2;
-    else if (data.seeing >= 3) score += 1;
-    else score += 0;
+    if (closest.transparency >= 5) score += 2;
+    else if (closest.transparency >= 3) score += 1;
 
-    //transparency
-    if (data.transparency >= 5) score += 2;
-    else if (data.transparency >= 3) score += 1;
-
-    //precipitation
-    if (data.prec_type && data.prec_type !== "none") {
-      score -= 2;
-    }
+    if (closest.prec_type && closest.prec_type !== "none") score -= 2;
 
     //moon illumination
     const moonIllum = sunCalc?.moon?.fraction || 0;
@@ -555,7 +500,7 @@ User Question: ${userMsg}
 
     const prompt = `
 You're summarising a weather data for stargazing to a beginner. 
-On the starting sentence, just say 'Here is the summary for ${cityName}, ${countryName}'
+On the starting sentence, just say 'Here is the summary for your location'
 
 Ignore forecasts before user time: ${new Date()}
 Forecast:
@@ -580,23 +525,22 @@ Translate UTC to the user timezone.
 With this format: **Best Stargazing Time:**
 `;
 
-    const res = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt,
+    const res = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
     });
-
-    return res.text ?? null;
+    return res.choices[0]?.message?.content ?? null;
   };
 
   //waits until the data is prepared for the summary data :D
   useEffect(() => {
-    if (weatherData && cityName && countryName) {
+    if (weatherData && countryName && !weatherSummary) {
       (async () => {
         const summary = await getWeatherSummary(weatherData);
         setWeatherSummary(summary);
       })();
     }
-  }, [weatherData, cityName, countryName]);
+  }, [weatherData, countryName]);
 
   return (
     <>
@@ -639,7 +583,6 @@ With this format: **Best Stargazing Time:**
 
           {activeScreen === "nightSky" && (
             <main className="screen">
-
               {/*---------------------------------   Information Panel  -------------------------------------*/}
 
               <AnimatePresence>
@@ -667,6 +610,21 @@ With this format: **Best Stargazing Time:**
                       <a href={starInfo.url} target="_blank">
                         Find out more
                       </a>
+                      <button
+                        className="button-primary"
+                        onClick={async () => {
+                          setChatMessage(
+                            `Tell me more about ${starInfo.title}`,
+                          );
+                          setShowStarInfo(false);
+                          setIsOpen(true);
+                          await handleSendMessage(
+                            `Tell me more about ${starInfo.title}`,
+                          );
+                        }}
+                      >
+                        Ask AstraBot
+                      </button>
                     </div>
                   </motion.div>
                 )}
@@ -677,7 +635,7 @@ With this format: **Best Stargazing Time:**
               <div className="locationInfo">
                 <div className="overlay">
                   <p className="headerLocation locationInfoHeaders">
-                    {cityName}, {countryName}
+                    {countryName}
                   </p>
                   <button
                     className="buttonScreenChange"
@@ -815,8 +773,11 @@ With this format: **Best Stargazing Time:**
                                 key={buttonIndex}
                                 className="button-primary"
                                 onClick={() => {
-                                  setSelectedStarId(button.target);
-                                  setFocusedStarId(button.target);
+                                  const hipId = findStarByName(button.target);
+                                  if (hipId) {
+                                    setSelectedStarId(hipId);
+                                    setFocusedStarId(hipId);
+                                  }
                                   setIsOpen(false);
                                 }}
                               >
@@ -924,9 +885,7 @@ With this format: **Best Stargazing Time:**
                   </button>
                   <div className="weatherSummary">
                     <div>
-                      <h2>
-                        Astronomical Conditions for {cityName}, {countryName}
-                      </h2>
+                      <h2>Astronomical Conditions for {countryName}</h2>
                       {weatherSummary === null ? (
                         <p>Summarising weather...</p>
                       ) : (
@@ -1015,8 +974,8 @@ With this format: **Best Stargazing Time:**
                                 color,
                                 processWeatherData(
                                   weatherData,
-                                  weatherData.init
-                                )
+                                  weatherData.init,
+                                ),
                               )}
                             </ResponsiveContainer>
                           </div>
@@ -1048,7 +1007,7 @@ export const renderChartByType = (
   key: string,
   name: string,
   color: string,
-  data: any[]
+  data: any[],
 ): any => {
   switch (type) {
     case "line":

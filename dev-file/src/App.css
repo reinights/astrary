@@ -267,7 +267,6 @@ iframe {
   border-radius: 50%;
   background: white;
   cursor: pointer;
-  margin-top: -19px;
 }
 
 .timeSlider::-moz-range-thumb {

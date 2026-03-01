@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.49.3",
     "astronomia": "^4.1.1",
     "framer-motion": "^12.5.0",
+    "groq-sdk": "^0.37.0",
     "leaflet": "^1.9.4",
     "papaparse": "^5.5.2",
     "react": "^19.0.0",
