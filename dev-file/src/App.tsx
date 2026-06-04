@@ -26,7 +26,6 @@ import {
   BarChart,
 } from "recharts";
 
-import Groq from "groq-sdk";
 type ChatButton = {
   label: string;
   target: string;
@@ -46,10 +45,6 @@ const weatherVisualisers = [
   { key: "cloudcover", name: "Cloud Cover", color: "#8884d8", type: "bar" },
 ];
 
-const groq = new Groq({
-  apiKey: import.meta.env.VITE_GROQ_API,
-  dangerouslyAllowBrowser: true,
-});
 type Screen = "location" | "nightSky" | "conditions";
 
 function App() {
@@ -124,7 +119,7 @@ function App() {
       if (!location) return;
 
       const res = await fetch(
-        `https://www.7timer.info/bin/api.pl?lon=${location.lng}&lat=${location.lat}&product=astro&output=json`,
+        `/api/weather?lon=${location.lng}&lat=${location.lat}&product=astro&output=json`,
       );
       const data = await res.json();
 
@@ -228,11 +223,13 @@ Dismiss unrelated to astronomy questions.
 User Question: ${userMsg}
 `;
 
-      const res = await groq.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }), // ✅
       });
-      const responseText = res.choices[0]?.message?.content ?? "{}";
+      const data = await res.json();
+      const responseText = data.choices[0]?.message?.content ?? "{}";
 
       // When sending that response, gemini reacts with using ```json [contents]```.
       // It's ok for markdown, but I cannot parse the buttons, so we need to get rid of it.
@@ -420,20 +417,6 @@ User Question: ${userMsg}
     }
   };
 
-  /*---------------------------------    Initial Dialog   -------------------------------------*/
-
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const initialDialog = localStorage.getItem("initialDialog");
-    if (!initialDialog) {
-      dialogRef.current?.showModal();
-    }
-  }, []);
-  const closeDialog = () => {
-    dialogRef.current?.close();
-    localStorage.setItem("initialDialog", "true");
-  };
-
   /*---------------------------------    Scoring The Weather   -------------------------------------*/
 
   function rateConditions(data: any, sunCalc: any, time: Date): string {
@@ -525,11 +508,13 @@ Translate UTC to the user timezone.
 With this format: **Best Stargazing Time:**
 `;
 
-    const res = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }],
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }),
     });
-    return res.choices[0]?.message?.content ?? null;
+    const data = await res.json();
+    return data.choices[0]?.message?.content ?? null;
   };
 
   //waits until the data is prepared for the summary data :D
@@ -554,19 +539,6 @@ With this format: **Best Stargazing Time:**
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeInOut" }}
         >
-          <dialog ref={dialogRef}>
-            <h2>Welcome to Astrary!</h2>
-            <p>
-              Just a heads up, the star identifier used within the site is HIP
-              (Hipparcos).
-            </p>
-            <form method="dialog">
-              <button onClick={closeDialog} className="button-primary">
-                OK
-              </button>
-            </form>
-          </dialog>
-
           {/*---------------------------------   Location Screen   -------------------------------------*/}
 
           {activeScreen === "location" && (
