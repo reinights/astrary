@@ -1,6 +1,6 @@
 //Currently using Prettier for code formatting: https://prettier.io/docs/
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 import LocationPicker from "./LocationPicker";
